@@ -216,14 +216,18 @@ class Eye_Detector:
         """
         pts = self.keypoints
         i = 0  # auxiliary counter
-        eye_pts_l = np.zeros(shape=(6, 2))  # numpy array for storing the keypoints positions of the left eye
-        eye_pts_r = np.zeros(shape=(6, 2))  # numpy array for storing the keypoints positions of the right eye
+        # numpy array for storing the keypoints positions of the left eye
+        eye_pts_l = np.zeros(shape=(6, 2))
+        # numpy array for storing the keypoints positions of the right eye
+        eye_pts_r = np.zeros(shape=(6, 2))
 
         for n in range(36, 42):  # the dlib keypoints from 36 to 42 are referring to the left eye
             point_l = pts.part(n)  # save the i-keypoint of the left eye
             point_r = pts.part(n + 6)  # save the i-keypoint of the right eye
-            eye_pts_l[i] = [point_l.x, point_l.y]  # array of x,y coordinates for the left eye reference point
-            eye_pts_r[i] = [point_r.x, point_r.y]  # array of x,y coordinates for the right eye reference point
+            # array of x,y coordinates for the left eye reference point
+            eye_pts_l[i] = [point_l.x, point_l.y]
+            # array of x,y coordinates for the right eye reference point
+            eye_pts_r[i] = [point_r.x, point_r.y]
             i += 1  # increasing the auxiliary counter
 
         def EAR_eye(eye_pts):
@@ -281,7 +285,7 @@ class Eye_Detector:
         '''
 
         eye_roi = self.frame[(left_point[1] - int(eye_width / 2)):(right_point[1] + int(eye_width / 2)),
-                  left_point[0]:right_point[0]]  # sub-portion of the image/frame containing the eye
+                             left_point[0]:right_point[0]]  # sub-portion of the image/frame containing the eye
 
         return eye_roi
 
@@ -469,7 +473,8 @@ class Head_Pose_Estimator:
                 self.model_points, self.image_points, self.camera_matrix, self.dist_coeffs, rvec, tvec)
             # this method is used to refine the rvec and tvec prediction
 
-            nose = (int(self.image_points[0][0]), int(self.image_points[0][1]))  # Head nose point in the image plane
+            # Head nose point in the image plane
+            nose = (int(self.image_points[0][0]), int(self.image_points[0][1]))
 
             (nose_end_point2D, jacobian) = cv2.projectPoints(
                 self.axis, rvec, tvec, self.camera_matrix, self.dist_coeffs)
@@ -479,7 +484,8 @@ class Head_Pose_Estimator:
             Rmat = cv2.Rodrigues(rvec)[0]
             # using the Rodrigues formula, this functions computes the Rotation Matrix from the rotation vector
 
-            roll, pitch, yaw = 180 * (rotationMatrixToEulerAngles(Rmat) / np.pi)
+            roll, pitch, yaw = 180 * \
+                (rotationMatrixToEulerAngles(Rmat) / np.pi)
             """
             We use the rotationMatrixToEulerAngles function to compute the euler angles (roll, pitch, yaw) from the
             Rotation Matrix. This function also checks if we have a gymbal lock.
@@ -516,7 +522,6 @@ class Attention_Scorer:
 
     def __init__(self, capture_fps: int, ear_tresh, gaze_tresh, perclos_tresh=0.2, ear_time_tresh=4.0, pitch_tresh=35,
                  yaw_tresh=30, gaze_time_tresh=4.0, roll_tresh=None, pose_time_tresh=4.0, verbose=False):
-
         """
         Attention Scorer class that contains methods for estimating EAR,Gaze_Score,PERCLOS and Head Pose over time,
         with the given thresholds (time tresholds and value tresholds)
@@ -570,7 +575,8 @@ class Attention_Scorer:
         self.fps = capture_fps
         self.delta_time_frame = (1.0 / capture_fps)  # estimated frame time
         self.prev_time = 0  # auxiliary variable for the PERCLOS estimation function
-        self.perclos_time_period = 60  # default time period for PERCLOS (60 seconds)
+        # default time period for PERCLOS (60 seconds)
+        self.perclos_time_period = 60
         self.perclos_tresh = perclos_tresh
 
         # the time tresholds are divided for the estimated frame time
@@ -593,7 +599,6 @@ class Attention_Scorer:
         self.verbose = verbose
 
     def eval_scores(self, ear_score, gaze_score, head_roll, head_pitch, head_yaw):
-
         """
         :param ear_score: float
             EAR (Eye Aspect Ratio) score obtained from the driver eye aperture
@@ -692,8 +697,10 @@ class Attention_Scorer:
         if (ear_score is not None) and (ear_score <= self.ear_tresh):
             self.eye_closure_counter += 1
 
-        closure_time = (self.eye_closure_counter * self.delta_time_frame)  # compute the cumulative eye closure time
-        perclos_score = (closure_time) / self.perclos_time_period  # compute the PERCLOS over a given time period
+        # compute the cumulative eye closure time
+        closure_time = (self.eye_closure_counter * self.delta_time_frame)
+        # compute the PERCLOS over a given time period
+        perclos_score = (closure_time) / self.perclos_time_period
 
         if perclos_score >= self.perclos_tresh:  # if the PERCLOS score is higher than a threshold, tired = True
             tired = True
@@ -710,13 +717,15 @@ class Attention_Scorer:
 
 
 def main():
+
     ctime = 0  # current time (used to compute FPS)
     ptime = 0  # past time (used to compute FPS)
     prev_time = 0  # previous time variable, used to set the FPS limit
     fps_lim = 11  # FPS upper limit value, needed for estimating the time for each frame and increasing performances
     time_lim = 1. / fps_lim  # time window for each frame taken by the webcam
 
-    Detector = dlib.get_frontal_face_detector()  # instantiation of the dlib face detector object
+    # instantiation of the dlib face detector object
+    Detector = dlib.get_frontal_face_detector()
     Predictor = dlib.shape_predictor(
         "predictor/shape_predictor_68_face_landmarks.dat")  # instantiation of the dlib keypoint detector model
     '''
@@ -732,7 +741,8 @@ def main():
 
     clahe = cv2.createCLAHE(clipLimit=2, tileGridSize=(8, 8))
 
-    cap = cv2.VideoCapture(0)  # capture the input from the default system camera (camera number 0)
+    # capture the input from the default system camera (camera number 0)
+    cap = cv2.VideoCapture(0)
     if not cap.isOpened():  # if the camera can't be opened exit the program
         print("Cannot open camera")
         exit()
@@ -756,10 +766,13 @@ def main():
             cv2.putText(frame, "FPS:" + str(round(fps, 0)), (10, 400), cv2.FONT_HERSHEY_PLAIN, 2,
                         (255, 0, 255), 1)
 
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)  # transform the BGR frame in grayscale
-            gray = cv2.bilateralFilter(gray,5,10,10)  # apply a bilateral filter to lower noise but keep frame details
+            # transform the BGR frame in grayscale
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            # apply a bilateral filter to lower noise but keep frame details
+            gray = cv2.bilateralFilter(gray, 5, 10, 10)
 
-            faces = Detector(gray)  # find the faces using the dlib face detector
+            # find the faces using the dlib face detector
+            faces = Detector(gray)
 
             if len(faces) > 0:  # process the frame only if at least a face is found
 
@@ -767,17 +780,20 @@ def main():
                 faces = sorted(faces, key=get_face_area, reverse=True)
                 driver_face = faces[0]
 
-                landmarks = Predictor(gray, driver_face)  # predict the 68 facial keypoints position
+                # predict the 68 facial keypoints position
+                landmarks = Predictor(gray, driver_face)
 
                 # instantiate the Eye detector and pose estimator objects
                 Eye_det = Eye_Detector(gray, landmarks, show_processing=False)
                 Head_pose = Head_Pose_Estimator(
                     frame, landmarks, verbose=True)
 
-                Eye_det.show_eye_keypoints(frame)  # shows the eye keypoints (can be commented)
+                # shows the eye keypoints (can be commented)
+                Eye_det.show_eye_keypoints(frame)
 
                 ear = Eye_det.get_EAR()  # compute the EAR score of the eyes
-                tired, perclos_score = Scorer.get_PERCLOS(ear)  # compute the PERCLOS score and state of tiredness
+                # compute the PERCLOS score and state of tiredness
+                tired, perclos_score = Scorer.get_PERCLOS(ear)
                 gaze = Eye_det.get_Gaze_Score()  # compute the Gaze Score
                 frame_det, roll, pitch, yaw = Head_pose.get_pose()  # compute the head pose
 

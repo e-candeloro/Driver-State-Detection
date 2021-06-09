@@ -310,26 +310,31 @@ class Eye_Detector:
             """
 
             eye_center = np.array(
-                [(eye_roi.shape[1] // 2), (eye_roi.shape[0] // 2)])
+                [(eye_roi.shape[1] // 2), (eye_roi.shape[0] // 2)])  # eye ROI center position
             gaze_score = None
             circles = None
             contours = None
 
+            # a bilateral filter is applied for reducing noise and keeping eye details
             eye_roi = cv2.bilateralFilter(eye_roi, 3, 25, 25)
             eye_tresh = cv2.adaptiveThreshold(
                 eye_roi, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 15, 7)
-
+            # an adaptive treshold is applied to the filtered image to detect the iris borders
             contours, _ = cv2.findContours(
-                eye_tresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                eye_tresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)  # this functions finds the contours given a binarized image (eye_tresh)
 
+            # if the contours are present
             if contours is not None and len(contours) > 0:
                 contours = sorted(
                     contours, key=lambda x: cv2.contourArea(x), reverse=True)
+                # take the largest area contours (this removes false positives)
                 cnt = contours[0]
+                # draw the contours over the eye_roi grayscale image in white
                 cv2.drawContours(eye_roi, [cnt], -1, (255, 255, 255), 1)
 
                 circles = cv2.HoughCircles(eye_roi, cv2.HOUGH_GRADIENT, 1, 10,
                                            param1=200, param2=6, minRadius=1, maxRadius=5)
+                # a Hough Transform is used to find the iris circle and his center (the pupil) on the grayscale eye_roi image with the contours drawn in white
 
                 if circles is not None and len(circles) > 0:
                     circles = np.uint16(np.around(circles))
@@ -337,11 +342,13 @@ class Eye_Detector:
                     # cv2.circle(eye_roi,(i[0],i[1]),i[2],(255,255,255),1)
                     cv2.circle(
                         eye_roi, (circle[0], circle[1]), 1, (255, 255, 255), -1)
+                    # pupil position is the first circle center found with the Hough Transform
                     pupil_position = np.array([int(circle[0]), int(circle[1])])
                     cv2.line(eye_roi, (eye_center[0], eye_center[1]), (
                         pupil_position[0], pupil_position[1]), (255, 255, 255), 1)
                     gaze_score = LA.norm(
                         pupil_position - eye_center) / eye_center[0]
+                    # computes the L2 distance between the eye_center and the pupil position
 
             cv2.circle(eye_roi, (eye_center[0],
                                  eye_center[1]), 1, (0, 0, 0), -1)
@@ -351,12 +358,14 @@ class Eye_Detector:
             else:
                 return None, None
 
-        left_eye_ROI = self.get_ROI(36)
-        right_eye_ROI = self.get_ROI(42)
+        left_eye_ROI = self.get_ROI(36)  # computes the ROI for the left eye
+        right_eye_ROI = self.get_ROI(42)  # computes the ROI for the right eye
 
+        # computes the gaze scores for the eyes
         gaze_eye_left, left_eye = get_gaze(left_eye_ROI)
         gaze_eye_right, right_eye = get_gaze(right_eye_ROI)
 
+        # if show_processing is True, shows the eyes ROI, eye center, pupil center and line distance
         if self.show_processing and (left_eye is not None) and (right_eye is not None):
             left_eye = resize(left_eye, 1000)
             right_eye = resize(right_eye, 1000)
@@ -365,6 +374,7 @@ class Eye_Detector:
 
         if gaze_eye_left and gaze_eye_right:
 
+            # computes the average gaze score for the 2 eyes
             avg_gaze_score = (gaze_eye_left + gaze_eye_left) / 2
             return avg_gaze_score
 

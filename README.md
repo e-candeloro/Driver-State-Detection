@@ -32,3 +32,8 @@ Adaptive thresholding is used and then a detect-contours is applied to enhance e
 
 ![Eye processing for gaze score estimation](https://user-images.githubusercontent.com/67196406/121316610-c8760b00-c909-11eb-9f25-3d600314285f.png)
 
+![Gaze_Score estimation](https://user-images.githubusercontent.com/67196406/121316549-bc8a4900-c909-11eb-80cc-eb18155ce0f8.png)
+
+**L2 distance is used and normalized with the L2 eye width**
+
+https://user-images.githubusercontent.com/67196406/121316446-a1b7d480-c909-11eb-9bac-773b7994b05b.mp4

@@ -2,6 +2,9 @@
 
 Real Time webcam based driver attention state detection using Python, OpenCV and Dlib.
 
+**Note**:
+This work is partially based on [this paper](https://www.researchgate.net/publication/327942674_Vision-Based_Driver%27s_Attention_Monitoring_System_for_Smart_Vehicles) for the scores and methods used
+
 ## How It Works?
 
 This script search for the driver face, then use the dlib library to predict 68 facial keypoints.

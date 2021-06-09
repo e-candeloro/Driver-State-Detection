@@ -7,15 +7,14 @@ import numpy as np
 from numpy import linalg as LA
 
 camera_matrix = np.array(
-    [[1.10481797e+03, 0.00000000e+00, 9.76862669e+02],
-     [0.00000000e+00, 1.11775382e+03, 5.07678687e+02],
+    [[1.09520943e+03, 0.00000000e+00, 9.80688063e+02],
+     [0.00000000e+00, 1.10470495e+03, 5.42055897e+02],
      [0.00000000e+00, 0.00000000e+00, 1.00000000e+00]], dtype="double")
 # camera matrix obtained from the camera calibration script, using a 9x6 chessboard
 
 dist_coeffs = np.array(
-    [[0.13580439, -0.08770944, -0.01913275, -0.00170941, -0.0361747]], dtype="double")
-
-
+    [[1.41401053e-01, - 2.12991544e-01, - 8.88887657e-04,  1.03893066e-04,
+      9.54437692e-02]], dtype="double")
 # distortion coefficients obtained from the camera calibration script, using a 9x6 chessboard
 
 
@@ -157,11 +156,11 @@ def draw_pose_info(frame, img_point, point_proj, roll=None, pitch=None, yaw=None
         point_proj[2].ravel().astype(int)), (0, 0, 255), 3)
 
     if roll is not None and pitch is not None and yaw is not None:
-        cv2.putText(frame, "Roll:" + str(round(roll, 3)), (400, 50),
+        cv2.putText(frame, "Roll:" + str(round(roll, 3)), (500, 50),
                     cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1, cv2.LINE_AA)
-        cv2.putText(frame, "Pitch:" + str(round(pitch, 3)), (400, 70),
+        cv2.putText(frame, "Pitch:" + str(round(pitch, 3)), (500, 70),
                     cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1, cv2.LINE_AA)
-        cv2.putText(frame, "Yaw:" + str(round(yaw, 3)), (400, 90),
+        cv2.putText(frame, "Yaw:" + str(round(yaw, 3)), (500, 90),
                     cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1, cv2.LINE_AA)
 
     return frame
@@ -476,7 +475,7 @@ class Head_Pose_Estimator:
             # Head nose point in the image plane
             nose = (int(self.image_points[0][0]), int(self.image_points[0][1]))
 
-            (nose_end_point2D, jacobian) = cv2.projectPoints(
+            (nose_end_point2D, _) = cv2.projectPoints(
                 self.axis, rvec, tvec, self.camera_matrix, self.dist_coeffs)
             # this function computes the 3 projection axis from the nose point of the head, so we can use them to
             # show the head pose later

@@ -1,5 +1,7 @@
 Parameters were computed using the cameracalib.py taken from OpenCV and using 30+ webcam photos of a planar 9x6 chessboard
 
+Attempt 1:
+
 
 Camera matrix : 
 
@@ -10,3 +12,18 @@ Camera matrix :
 distorsion coefficients:
 
 [[ 0.13580439 -0.08770944 -0.01913275 -0.00170941 -0.0361747 ]]
+
+
+Attempt 2:
+
+Camera matrix : 
+
+[[1.09520943e+03 0.00000000e+00 9.80688063e+02]
+ [0.00000000e+00 1.10470495e+03 5.42055897e+02]
+ [0.00000000e+00 0.00000000e+00 1.00000000e+00]]
+
+
+dist :
+
+[[ 1.41401053e-01 -2.12991544e-01 -8.88887657e-04  1.03893066e-04
+   9.54437692e-02]]

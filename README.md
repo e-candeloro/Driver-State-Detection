@@ -37,3 +37,27 @@ Adaptive thresholding is used and then a detect-contours is applied to enhance e
 **L2 distance is used and normalized with the L2 eye width**
 
 https://user-images.githubusercontent.com/67196406/121316446-a1b7d480-c909-11eb-9bac-773b7994b05b.mp4
+
+## Installation
+
+This projects runs on Python 3.9 with the following libraries:
+
+- numpy
+- OpenCV (opencv-python)
+- Dlib and cmake
+
+The Dlib predictor for face keypoints is already included in the "predictor" folder
+
+### IMPORTANT: Dlib installation
+
+Dlib is a library that needs a C/C++ compiler installed and also the Cmake library. 
+Please follow [this guide](http://dlib.net/compile.html) to install dlib propely on your machine
+
+If you have already all the prerequisites in your machine to install dlib and cmake you can use the requirements.txt file provided in the repository or you can execute the following pip commands on terminal:
+
+```
+pip install numpy
+pip install opencv-python
+pip install cmake
+pip install dlib --verbose
+```

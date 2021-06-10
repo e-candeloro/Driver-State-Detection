@@ -1,0 +1,4 @@
+numpy
+opencv-python #or opencv-contrib-python
+cmake
+dlib

@@ -3,11 +3,13 @@
 Real Time webcam based driver attention state detection using Python, OpenCV and Dlib.
 
 **Note**:
-This work is partially based on [this paper](https://www.researchgate.net/publication/327942674_Vision-Based_Driver%27s_Attention_Monitoring_System_for_Smart_Vehicles) for the scores and methods used
+This work is partially based on [this paper](https://www.researchgate.net/publication/327942674_Vision-Based_Driver%27s_Attention_Monitoring_System_for_Smart_Vehicles) for the scores and methods used.
 
 ## How It Works?
 
 This script search for the driver face, then use the dlib library to predict 68 facial keypoints.
+The enumeration and location of all the face keypoints/landmarks can be seen [here](https://raw.githubusercontent.com/e-candeloro/Driver-State-Detection/master/predictor/Keypoint%20map%20example.png).
+
 With those keypoints, the following feature are computed:
 
 - **EAR**: Eye Aspect Ratio, it's the normalized average eyes aperture, and it's used to see how much the eyes are opened or closed
@@ -28,7 +30,7 @@ https://user-images.githubusercontent.com/67196406/121312501-bb571d00-c905-11eb-
 
 ### Gaze Score Estimation
 The white line is the Euclidean (L2) distance between the black dot (center of the ROI of the eyes) and the white dot (estimated center of the iris/pupil)
-Adaptive thresholding is used and then a detect-contours is applied to enhance edges over the gray image. Then a Hough Transform is used to find the iris circle and his center (the pupil)
+Adaptive thresholding is used and then a detect-contours is applied to enhance edges over the gray image. Then a Hough Transform is used to find the iris circle and his center (the pupil).
 
 ![Eye processing for gaze score estimation](https://user-images.githubusercontent.com/67196406/121316610-c8760b00-c909-11eb-9f25-3d600314285f.png)
 
@@ -51,7 +53,7 @@ The Dlib predictor for face keypoints is already included in the "predictor" fol
 ### IMPORTANT: Dlib installation
 
 Dlib is a library that needs a C/C++ compiler installed and also the Cmake library. 
-Please follow [this guide](http://dlib.net/compile.html) to install dlib propely on your machine
+Please follow [this guide](http://dlib.net/compile.html) to install dlib propely on your machine.
 
 If you have already all the prerequisites in your machine to install dlib and cmake you can use the requirements.txt file provided in the repository or you can execute the following pip commands on terminal:
 

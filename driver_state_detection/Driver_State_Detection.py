@@ -37,6 +37,9 @@ def resize(frame, scale_percent):
 
 def get_face_area(face):
     """
+    Computes the area of the bounding box ROI of the face detected by the dlib face detector
+    It's used to sort the detected faces by the box area
+
     :param face: dlib bounding box of a detected face in faces
     :return: area of the face bounding box
     """
@@ -45,6 +48,7 @@ def get_face_area(face):
 
 def show_keypoints(keypoints, frame):
     """
+    Draw circles on the opencv frame over the face keypoints predicted by the dlib predictor
 
     :param keypoints: dlib iterable 68 keypoints object
     :param frame: opencv frame
@@ -92,7 +96,7 @@ def get_array_keypoints(landmarks, dtype="int", verbose: bool = False):
 
 def isRotationMatrix(R):
     """
-
+    Checks if a matrix is a rotation matrix
     :param R: np.array matrix of 3 by 3
     :return: True or False
         Return True if a matrix is a rotation matrix, False if not
@@ -170,7 +174,7 @@ class Eye_Detector:
 
     def __init__(self, frame, landmarks, show_processing: bool = False):
         """
-        Eye dector object that contains various method for eye aperture rate estimation and gaze score estimation
+        Eye dector class that contains various method for eye aperture rate estimation and gaze score estimation
 
         Parameters
         ----------
@@ -386,7 +390,7 @@ class Head_Pose_Estimator:
 
     def __init__(self, frame, landmarks, camera_matrix=None, dist_coeffs=None, verbose: bool = False):
         """
-        Head Pose estimator object that contains the get_pose method for computing the three euler angles
+        Head Pose estimator class that contains the get_pose method for computing the three euler angles
         (roll, pitch, yaw) of the head. It uses the image/frame, the dlib detected landmarks of the head and,
         optionally the camera parameters
 

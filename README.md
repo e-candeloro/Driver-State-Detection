@@ -10,7 +10,7 @@ This work is partially based on [this paper](https://www.researchgate.net/public
 This script search for the driver face, then use the dlib library to predict 68 facial keypoints.
 The enumeration and location of all the face keypoints/landmarks can be seen [here](https://raw.githubusercontent.com/e-candeloro/Driver-State-Detection/master/predictor/Keypoint%20map%20example.png).
 
-With those keypoints, the following feature are computed:
+With those keypoints, the following feature (scores) are computed:
 
 - **EAR**: Eye Aspect Ratio, it's the normalized average eyes aperture, and it's used to see how much the eyes are opened or closed
 - **Gaze Score**: L2 Norm (Euclidean distance) between the center of the eye and the pupil, it's used to see if the driver is looking away or not
@@ -27,6 +27,8 @@ The driver states can be classified as:
 ## Demo
 
 https://user-images.githubusercontent.com/67196406/121312501-bb571d00-c905-11eb-8d25-1cd28efc9110.mp4
+
+## The Scores Explained
 
 ### EAR
 Eye Aspect Ratio is a normalized score that is useful to understand the rate of aperture of the eyes.
@@ -53,6 +55,13 @@ Then the average of the two eyes Gaze Score is computed
 **Demo**
 
 https://user-images.githubusercontent.com/67196406/121316446-a1b7d480-c909-11eb-9bac-773b7994b05b.mp4
+
+### Head Pose Estimation
+For the head pose estimation, a standard 3d head model in world coordinates was considered, in combination of the respective dlib keypoints in the image plane. In this way, using the solvePnP function of OpenCV, estimating the rotation and translation vector of the head in respect to the camera is possible.
+Then the 3 Euler angles are computed.
+The partial snippets of code used for this task can be found in [this article](https://learnopencv.com/head-pose-estimation-using-opencv-and-dlib/)
+
+
 
 ## Installation
 

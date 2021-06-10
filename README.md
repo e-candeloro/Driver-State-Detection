@@ -28,15 +28,29 @@ The driver states can be classified as:
 
 https://user-images.githubusercontent.com/67196406/121312501-bb571d00-c905-11eb-8d25-1cd28efc9110.mp4
 
+### EAR
+Eye Aspect Ratio is a normalized score that is useful to understand the rate of aperture of the eyes.
+The EAR score for each eye is computed as explained in the image below:
+![EAR](https://user-images.githubusercontent.com/67196406/121489162-18210900-c9d4-11eb-9d2e-765f5ac42286.png)
+Then the average of the two eyes EAR score is computed
+
+
 ### Gaze Score Estimation
 The white line is the Euclidean (L2) distance between the black dot (center of the ROI of the eyes) and the white dot (estimated center of the iris/pupil)
 Adaptive thresholding is used and then a detect-contours is applied to enhance edges over the gray image. Then a Hough Transform is used to find the iris circle and his center (the pupil).
+Finally, the score is normalized by the eye width.
+
+The below image explains how the Gaze Score for a single eye is computed:
+![Gaze Score](https://user-images.githubusercontent.com/67196406/121489746-ab5a3e80-c9d4-11eb-8f33-d34afd0947b4.png)
+Then the average of the two eyes Gaze Score is computed
+
+**Eye processing for gaze score:**
 
 ![Eye processing for gaze score estimation](https://user-images.githubusercontent.com/67196406/121316610-c8760b00-c909-11eb-9f25-3d600314285f.png)
 
 ![Gaze_Score estimation](https://user-images.githubusercontent.com/67196406/121316549-bc8a4900-c909-11eb-80cc-eb18155ce0f8.png)
 
-**L2 distance is used and normalized with the L2 eye width**
+**Demo**
 
 https://user-images.githubusercontent.com/67196406/121316446-a1b7d480-c909-11eb-9bac-773b7994b05b.mp4
 

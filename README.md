@@ -58,6 +58,9 @@ The below image explains graphically how the Gaze Score for a single eye is comp
 For the first version, an adaptive thresholding was used to aid the Hough transform for detecting the iris position.
 In the updated version, only a Hough transform is used and the ROI of the eyes has been reduced in size.
 
+![Gaze_Score estimation v2](https://user-images.githubusercontent.com/67196406/123986317-7daa5900-d9c6-11eb-8860-bd23f8983bdc.png)
+
+
 **Demo**
 
 https://user-images.githubusercontent.com/67196406/121316446-a1b7d480-c909-11eb-9bac-773b7994b05b.mp4

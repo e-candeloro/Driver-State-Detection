@@ -5,6 +5,7 @@ import cv2
 import dlib
 import numpy as np
 from numpy import linalg as LA
+from numpy.lib.twodim_base import eye
 
 camera_matrix = np.array(
     [[1.09520943e+03, 0.00000000e+00, 9.80688063e+02],
@@ -196,6 +197,7 @@ class Eye_Detector:
         self.keypoints = landmarks
         self.frame = frame
         self.show_processing = show_processing
+        self.eye_width = None
 
     def show_eye_keypoints(self, color_frame):
         """
@@ -268,27 +270,20 @@ class Eye_Detector:
         keypoints = self.keypoints
         kp_num = left_corner_keypoint_num
 
-        left_point = np.array(
-            [keypoints.part(kp_num).x, keypoints.part(kp_num).y])  # left point of the eye
-        right_point = np.array(
-            [keypoints.part(kp_num + 3).x, keypoints.part(kp_num + 3).y])  # right point of the eye
-        upper_point = midpoint(keypoints.part(kp_num + 1),
-                               keypoints.part(kp_num + 1))  # upper-mid point of the eye
-        lower_point = midpoint(keypoints.part(kp_num + 4),
-                               keypoints.part(kp_num + 5))  # lower-mid point od the eye
+        eye_array = np.array(
+            [(keypoints.part(kp_num).x, keypoints.part(kp_num).y),
+             (keypoints.part(kp_num+1).x, keypoints.part(kp_num+1).y),
+             (keypoints.part(kp_num+2).x, keypoints.part(kp_num+2).y),
+             (keypoints.part(kp_num+3).x, keypoints.part(kp_num+3).y),
+             (keypoints.part(kp_num+4).x, keypoints.part(kp_num+4).y),
+             (keypoints.part(kp_num+5).x, keypoints.part(kp_num+5).y)], np.int32)
 
-        eye_width = LA.norm(left_point - right_point)  # eye-width (l2 norm)
+        min_x = np.min(eye_array[:, 0])
+        max_x = np.max(eye_array[:, 0])
+        min_y = np.min(eye_array[:, 1])
+        max_y = np.max(eye_array[:, 1])
 
-        '''
-        Additional parameters that can be useful:
-        
-        eye_height = LA.norm(upper_point - lower_point)  # eye-height (l2 norm)
-        roi_upleft = ( (left_point[0] +1) , (left_point[1] - int(eye_width/2) +1) )
-        roi_btmright = ( (right_point[0] +1), (right_point[1] + int(eye_width/2) +1) )
-        '''
-
-        eye_roi = self.frame[(left_point[1] - int(eye_width / 2)):(right_point[1] + int(eye_width / 2)),
-                             left_point[0]:right_point[0]]  # sub-portion of the image/frame containing the eye
+        eye_roi = self.frame[min_y-2:max_y+2, min_x-2:max_x+2]
 
         return eye_roi
 
@@ -317,42 +312,32 @@ class Eye_Detector:
                 [(eye_roi.shape[1] // 2), (eye_roi.shape[0] // 2)])  # eye ROI center position
             gaze_score = None
             circles = None
-            contours = None
 
             # a bilateral filter is applied for reducing noise and keeping eye details
-            eye_roi = cv2.bilateralFilter(eye_roi, 3, 25, 25)
-            eye_tresh = cv2.adaptiveThreshold(
-                eye_roi, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 15, 7)
-            # an adaptive treshold is applied to the filtered image to detect the iris borders
-            contours, _ = cv2.findContours(
-                eye_tresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)  # this functions finds the contours given a binarized image (eye_tresh)
+            eye_roi = cv2.bilateralFilter(eye_roi, 4, 40, 40)
 
-            # if the contours are present
-            if contours is not None and len(contours) > 0:
-                contours = sorted(
-                    contours, key=lambda x: cv2.contourArea(x), reverse=True)
-                # take the largest area contours (this removes false positives)
-                cnt = contours[0]
-                # draw the contours over the eye_roi grayscale image in white
-                cv2.drawContours(eye_roi, [cnt], -1, (255, 255, 255), 1)
+            circles = cv2.HoughCircles(eye_roi, cv2.HOUGH_GRADIENT, 1, 10,
+                                       param1=90, param2=6, minRadius=1, maxRadius=9)
+            # a Hough Transform is used to find the iris circle and his center (the pupil) on the grayscale eye_roi image with the contours drawn in white
 
-                circles = cv2.HoughCircles(eye_roi, cv2.HOUGH_GRADIENT, 1, 10,
-                                           param1=200, param2=6, minRadius=1, maxRadius=5)
-                # a Hough Transform is used to find the iris circle and his center (the pupil) on the grayscale eye_roi image with the contours drawn in white
+            if circles is not None and len(circles) > 0:
+                circles = np.uint16(np.around(circles))
+                circle = circles[0][0, :]
 
-                if circles is not None and len(circles) > 0:
-                    circles = np.uint16(np.around(circles))
-                    circle = circles[0][0, :]
-                    # cv2.circle(eye_roi,(i[0],i[1]),i[2],(255,255,255),1)
-                    cv2.circle(
-                        eye_roi, (circle[0], circle[1]), 1, (255, 255, 255), -1)
-                    # pupil position is the first circle center found with the Hough Transform
-                    pupil_position = np.array([int(circle[0]), int(circle[1])])
-                    cv2.line(eye_roi, (eye_center[0], eye_center[1]), (
-                        pupil_position[0], pupil_position[1]), (255, 255, 255), 1)
-                    gaze_score = LA.norm(
-                        pupil_position - eye_center) / eye_center[0]
-                    # computes the L2 distance between the eye_center and the pupil position
+                cv2.circle(
+                    eye_roi, (circle[0], circle[1]), circle[2], (255, 255, 255), 1)
+                cv2.circle(
+                    eye_roi, (circle[0], circle[1]), 1, (255, 255, 255), -1)
+
+                # pupil position is the first circle center found with the Hough Transform
+                pupil_position = np.array([int(circle[0]), int(circle[1])])
+
+                cv2.line(eye_roi, (eye_center[0], eye_center[1]), (
+                    pupil_position[0], pupil_position[1]), (255, 255, 255), 1)
+
+                gaze_score = LA.norm(
+                    pupil_position - eye_center) / eye_center[0]
+                # computes the L2 distance between the eye_center and the pupil position
 
             cv2.circle(eye_roi, (eye_center[0],
                                  eye_center[1]), 1, (0, 0, 0), -1)
@@ -797,7 +782,7 @@ def main():
                 landmarks = Predictor(gray, driver_face)
 
                 # instantiate the Eye detector and pose estimator objects
-                Eye_det = Eye_Detector(gray, landmarks, show_processing=False)
+                Eye_det = Eye_Detector(gray, landmarks, show_processing=True)
                 Head_pose = Head_Pose_Estimator(
                     frame, landmarks, verbose=True)
 

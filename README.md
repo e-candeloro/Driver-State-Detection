@@ -7,14 +7,14 @@ This work is partially based on [this paper](https://www.researchgate.net/public
 
 ## How It Works?
 
-This script search for the driver face, then use the dlib library to predict 68 facial keypoints.
+This script searches for the driver face, then use the dlib library to predict 68 facial keypoints.
 The enumeration and location of all the face keypoints/landmarks can be seen [here](https://raw.githubusercontent.com/e-candeloro/Driver-State-Detection/master/predictor/Keypoint%20map%20example.png).
 
-With those keypoints, the following feature (scores) are computed:
+With those keypoints, the following scores are computed:
 
 - **EAR**: Eye Aspect Ratio, it's the normalized average eyes aperture, and it's used to see how much the eyes are opened or closed
 - **Gaze Score**: L2 Norm (Euclidean distance) between the center of the eye and the pupil, it's used to see if the driver is looking away or not
-- **Head Pose**: Roll, Pitch and Yaw of the head of the driver. The angles are used to see if the driver is not looking straight ahead or doesn't have a straight head pose (probably unconscious)
+- **Head Pose**: Roll, Pitch and Yaw of the head of the driver. The angles are used to see if the driver is not looking straight ahead or doesn't have a straight head pose (is probably unconscious)
 - **PERCLOS**: PERcentage of CLOSure eye time, used to see how much time the eyes are closed in a minute. A threshold of 0.2 is used in this case (20% of a minute) and the EAR score is used to estimate when the eyes are closed.
 
 The driver states can be classified as:
@@ -31,20 +31,21 @@ https://user-images.githubusercontent.com/67196406/121312501-bb571d00-c905-11eb-
 ## The Scores Explained
 
 ### EAR
-Eye Aspect Ratio is a normalized score that is useful to understand the rate of aperture of the eyes.
-The EAR score for each eye is computed as explained in the image below:
+**Eye Aspect Ratio** is a normalized score that is useful to understand the rate of aperture of the eyes.
+Using the dlib keypoints for each eye (six for each), the eye lenght and width are estimated and using this data the EAR score is computed as explained in the image below:
 ![EAR](https://user-images.githubusercontent.com/67196406/121489162-18210900-c9d4-11eb-9d2e-765f5ac42286.png)
-Then the average of the two eyes EAR score is computed
+
+**NOTE:** the average of the two eyes EAR score is computed
 
 
 ### Gaze Score Estimation
-The white line is the Euclidean (L2) distance between the black dot (center of the ROI of the eyes) and the white dot (estimated center of the iris/pupil)
-Adaptive thresholding is used and then a detect-contours is applied to enhance edges over the gray image. Then a Hough Transform is used to find the iris circle and his center (the pupil).
-Finally, the score is normalized by the eye width.
+The gaze score gives information about how much the driver is looking away without turning his head.
 
-The below image explains how the Gaze Score for a single eye is computed:
+To understand this, the distance between the eye center and the position of the pupil is computed. The result is then normalized by the eye width that can be different depending on the driver physionomy and distance from the camera.
+
+The below image explains graphically how the Gaze Score for a single eye is computed:
 ![Gaze Score](https://user-images.githubusercontent.com/67196406/121489746-ab5a3e80-c9d4-11eb-8f33-d34afd0947b4.png)
-Then the average of the two eyes Gaze Score is computed
+**NOTE:** the average of the two eyes Gaze Score is computed
 
 **Eye processing for gaze score:**
 
@@ -52,15 +53,21 @@ Then the average of the two eyes Gaze Score is computed
 
 ![Gaze_Score estimation](https://user-images.githubusercontent.com/67196406/121316549-bc8a4900-c909-11eb-80cc-eb18155ce0f8.png)
 
+**Updated version of the processing for computing the gaze score**:
+
+For the first version, an adaptive thresholding was used to aid the Hough transform for detecting the iris position.
+In the updated version, only a Hough transform is used and the ROI of the eyes has been reduced in size.
+
 **Demo**
 
 https://user-images.githubusercontent.com/67196406/121316446-a1b7d480-c909-11eb-9bac-773b7994b05b.mp4
+
+The white line is the Euclidean (L2) distance between the black dot (center of the ROI of the eyes) and the white dot (estimated center of the iris/pupil).
 
 ### Head Pose Estimation
 For the head pose estimation, a standard 3d head model in world coordinates was considered, in combination of the respective dlib keypoints in the image plane. In this way, using the solvePnP function of OpenCV, estimating the rotation and translation vector of the head in respect to the camera is possible.
 Then the 3 Euler angles are computed.
 The partial snippets of code used for this task can be found in [this article](https://learnopencv.com/head-pose-estimation-using-opencv-and-dlib/)
-
 
 
 ## Installation

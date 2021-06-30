@@ -781,7 +781,7 @@ def main():
                 landmarks = Predictor(gray, driver_face)
 
                 # instantiate the Eye detector and pose estimator objects
-                Eye_det = Eye_Detector(gray, landmarks, show_processing=False)
+                Eye_det = Eye_Detector(gray, landmarks, show_processing=True)
                 Head_pose = Head_Pose_Estimator(
                     frame, landmarks, verbose=True)
 

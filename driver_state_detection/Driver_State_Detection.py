@@ -481,8 +481,7 @@ class Head_Pose_Estimator:
             Rmat = cv2.Rodrigues(rvec)[0]
             # using the Rodrigues formula, this functions computes the Rotation Matrix from the rotation vector
 
-            roll, pitch, yaw = 180 * \
-                (rotationMatrixToEulerAngles(Rmat) / np.pi)
+            roll, pitch, yaw = rotationMatrixToEulerAngles(Rmat) * 180/np.pi
             """
             We use the rotationMatrixToEulerAngles function to compute the euler angles (roll, pitch, yaw) from the
             Rotation Matrix. This function also checks if we have a gymbal lock.

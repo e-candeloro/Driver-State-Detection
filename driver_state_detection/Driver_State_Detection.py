@@ -6,6 +6,9 @@ import dlib
 import numpy as np
 from numpy import linalg as LA
 
+# capture source number select the webcam to use (default is zero -> built in camera)
+CAPTURE_SOURCE = 0
+
 camera_matrix = np.array(
     [[1.09520943e+03, 0.00000000e+00, 9.80688063e+02],
      [0.00000000e+00, 1.10470495e+03, 5.42055897e+02],
@@ -735,10 +738,8 @@ def main():
     # instantiation of the attention scorer object, with the various thresholds
     # NOTE: set verbose to True for additional printed information about the scores
 
-    clahe = cv2.createCLAHE(clipLimit=2, tileGridSize=(8, 8))
-
     # capture the input from the default system camera (camera number 0)
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(CAPTURE_SOURCE)
     if not cap.isOpened():  # if the camera can't be opened exit the program
         print("Cannot open camera")
         exit()
@@ -780,7 +781,7 @@ def main():
                 landmarks = Predictor(gray, driver_face)
 
                 # instantiate the Eye detector and pose estimator objects
-                Eye_det = Eye_Detector(gray, landmarks, show_processing=True)
+                Eye_det = Eye_Detector(gray, landmarks, show_processing=False)
                 Head_pose = Head_Pose_Estimator(
                     frame, landmarks, verbose=True)
 

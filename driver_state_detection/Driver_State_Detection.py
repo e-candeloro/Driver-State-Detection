@@ -58,7 +58,7 @@ def show_keypoints(keypoints, frame):
     :return: frame
         Returns the frame with all the 68 dlib face keypoints drawn
     """
-    for n in range(0, 68):  # per tutti i 68 keypoints stampa su frame la loro posizione
+    for n in range(0, 68):
         x = keypoints.part(n).x
         y = keypoints.part(n).y
         cv2.circle(frame, (x, y), 1, (0, 0, 255), -1)

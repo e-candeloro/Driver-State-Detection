@@ -1,11 +1,11 @@
 # Real Time Driver State Detection
 
-Real Time webcam based driver attention state detection using Python, OpenCV and Dlib.
+Real Time webcam based driver attention state detection using Python with the OpenCV and Dlib libraries.
 
 **Note**:
 This work is partially based on [this paper](https://www.researchgate.net/publication/327942674_Vision-Based_Driver%27s_Attention_Monitoring_System_for_Smart_Vehicles) for the scores and methods used.
 
-## How It Works?
+## How Does It Work?
 
 This script searches for the driver face, then use the dlib library to predict 68 facial keypoints.
 The enumeration and location of all the face keypoints/landmarks can be seen [here](https://raw.githubusercontent.com/e-candeloro/Driver-State-Detection/master/predictor/Keypoint%20map%20example.png).
@@ -49,14 +49,12 @@ The below image explains graphically how the Gaze Score for a single eye is comp
 
 **Eye processing for gaze score:**
 
-![Eye processing for gaze score estimation](https://user-images.githubusercontent.com/67196406/121316610-c8760b00-c909-11eb-9f25-3d600314285f.png)
-
 ![Gaze_Score estimation](https://user-images.githubusercontent.com/67196406/121316549-bc8a4900-c909-11eb-80cc-eb18155ce0f8.png)
 
 **Updated version of the processing for computing the gaze score**:
 
 For the first version, an adaptive thresholding was used to aid the Hough transform for detecting the iris position.
-In the updated version, only a Hough transform is used and the ROI of the eyes has been reduced in size.
+In the updated version,after a Bilateral Filter to remove some noise, only the Hough transform is used and the ROI of the eyes has been reduced in size.
 
 ![Gaze_Score estimation v2](https://user-images.githubusercontent.com/67196406/123986317-7daa5900-d9c6-11eb-8860-bd23f8983bdc.png)
 
@@ -68,9 +66,11 @@ https://user-images.githubusercontent.com/67196406/121316446-a1b7d480-c909-11eb-
 The white line is the Euclidean (L2) distance between the black dot (center of the ROI of the eyes) and the white dot (estimated center of the iris/pupil).
 
 ### Head Pose Estimation
-For the head pose estimation, a standard 3d head model in world coordinates was considered, in combination of the respective dlib keypoints in the image plane. In this way, using the solvePnP function of OpenCV, estimating the rotation and translation vector of the head in respect to the camera is possible.
+For the head pose estimation, a standard 3d head model in world coordinates was considered, in combination of the respective dlib keypoints in the image plane. 
+In this way, using the solvePnP function of OpenCV, estimating the rotation and translation vector of the head in respect to the camera is possible.
 Then the 3 Euler angles are computed.
-The partial snippets of code used for this task can be found in [this article](https://learnopencv.com/head-pose-estimation-using-opencv-and-dlib/)
+
+The partial snippets of code used for this task can be found in [this article](https://learnopencv.com/head-pose-estimation-using-opencv-and-dlib/).
 
 
 ## Installation
@@ -96,3 +96,11 @@ pip install opencv-python
 pip install cmake
 pip install dlib --verbose
 ```
+
+If you have difficulties installing dlib, it is suggested to use the .whl precompiled package available online.
+
+## License and Contacts
+
+This project is freely available under the MIT license. You can use/modify this code as long as you include the original license present in this repository in it.
+
+For any question or if you want to contribute to this project, feel free to contact me at candeloroettore@gmai.com or open a pull request.

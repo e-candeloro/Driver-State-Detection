@@ -103,4 +103,4 @@ If you have difficulties installing dlib, it is suggested to use the .whl precom
 
 This project is freely available under the MIT license. You can use/modify this code as long as you include the original license present in this repository in it.
 
-For any question or if you want to contribute to this project, feel free to contact me at candeloroettore@gmai.com or open a pull request.
+For any question or if you want to contribute to this project, feel free to contact me at candeloroettore@gmail.com or open a pull request.

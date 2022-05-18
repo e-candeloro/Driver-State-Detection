@@ -10,14 +10,13 @@ from numpy import linalg as LA
 CAPTURE_SOURCE = 0
 
 camera_matrix = np.array(
-    [[1.09520943e+03, 0.00000000e+00, 9.80688063e+02],
-     [0.00000000e+00, 1.10470495e+03, 5.42055897e+02],
-     [0.00000000e+00, 0.00000000e+00, 1.00000000e+00]], dtype="double")
+    [[899.12150372, 0., 644.26261492],
+     [0., 899.45280671, 372.28009436],
+     [0, 0,  1]], dtype="double")
 # camera matrix obtained from the camera calibration script, using a 9x6 chessboard
 
 dist_coeffs = np.array(
-    [[1.41401053e-01, - 2.12991544e-01, - 8.88887657e-04,  1.03893066e-04,
-      9.54437692e-02]], dtype="double")
+    [[-0.03792548, 0.09233237, 0.00419088, 0.00317323, -0.15804257]], dtype="double")
 # distortion coefficients obtained from the camera calibration script, using a 9x6 chessboard
 
 

@@ -723,6 +723,8 @@ def main():
     fps_lim = 11  # FPS upper limit value, needed for estimating the time for each frame and increasing performances
     time_lim = 1. / fps_lim  # time window for each frame taken by the webcam
 
+    cv2.setUseOptimized(True)  # set OpenCV optimization to True
+
     # instantiation of the dlib face detector object
     Detector = dlib.get_frontal_face_detector()
     Predictor = dlib.shape_predictor(

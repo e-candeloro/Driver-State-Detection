@@ -1,4 +1,50 @@
 import numpy as np
+import cv2
+
+
+def resize(frame, scale_percent):
+    """
+    Resize the image maintaining the aspect ratio
+    :param frame: opencv image/frame
+    :param scale_percent: int
+        scale factor for resizing the image
+    :return:
+    resized: rescaled opencv image/frame
+    """
+    width = int(frame.shape[1] * scale_percent / 100)
+    height = int(frame.shape[0] * scale_percent / 100)
+    dim = (width, height)
+
+    resized = cv2.resize(frame, dim, interpolation=cv2.INTER_LINEAR)
+    return resized
+
+
+def get_face_area(face):
+    """
+    Computes the area of the bounding box ROI of the face detected by the dlib face detector
+    It's used to sort the detected faces by the box area
+
+    :param face: dlib bounding box of a detected face in faces
+    :return: area of the face bounding box
+    """
+    return abs((face.left() - face.right()) * (face.bottom() - face.top()))
+
+
+def show_keypoints(keypoints, frame):
+    """
+    Draw circles on the opencv frame over the face keypoints predicted by the dlib predictor
+
+    :param keypoints: dlib iterable 68 keypoints object
+    :param frame: opencv frame
+    :return: frame
+        Returns the frame with all the 68 dlib face keypoints drawn
+    """
+    for n in range(0, 68):
+        x = keypoints.part(n).x
+        y = keypoints.part(n).y
+        cv2.circle(frame, (x, y), 1, (0, 0, 255), -1)
+        return frame
+
 
 def midpoint(p1, p2):
     """

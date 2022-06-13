@@ -83,12 +83,16 @@ This projects runs on Python 3.9 with the following libraries:
 
 The Dlib predictor for face keypoints is already included in the "predictor" folder
 
-### IMPORTANT: Dlib installation
+### IMPORTANT: Dlib requirements and libraries installation
 
 Dlib is a library that needs a C/C++ compiler installed and also the Cmake library. 
 Please follow [this guide](http://dlib.net/compile.html) to install dlib propely on your machine.
 
-If you have already all the prerequisites in your machine to install dlib and cmake you can use the requirements.txt file provided in the repository or you can execute the following pip commands on terminal:
+If you have already all the prerequisites in your machine to install dlib and cmake you can use the requirements.txt file provided in the repository using:
+    
+    pip install -r requirements.txt
+    
+Or you can execute the following pip commands on terminal:
 
 ```
 pip install numpy
@@ -103,4 +107,4 @@ If you have difficulties installing dlib, it is suggested to use the .whl precom
 
 This project is freely available under the MIT license. You can use/modify this code as long as you include the original license present in this repository in it.
 
-For any question or if you want to contribute to this project, feel free to contact me at candeloroettore@gmail.com or open a pull request.
+For any question or if you want to contribute to this project, feel free to contact me or open a pull request.

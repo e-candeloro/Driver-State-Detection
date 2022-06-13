@@ -2,6 +2,9 @@
 
 Real Time webcam based driver attention state detection using Python with the OpenCV and Dlib libraries.
 
+![driver state detection demo](https://user-images.githubusercontent.com/67196406/173455413-ba95db40-6be5-4d64-9a1d-6c998854130e.gif)
+
+
 **Note**:
 This work is partially based on [this paper](https://www.researchgate.net/publication/327942674_Vision-Based_Driver%27s_Attention_Monitoring_System_for_Smart_Vehicles) for the scores and methods used.
 
@@ -102,6 +105,11 @@ pip install dlib --verbose
 ```
 
 If you have difficulties installing dlib, it is suggested to use the .whl precompiled package available online.
+
+## Why this project
+This project was develop as a part for the final group project for the course of [Computer Vision and Cognitive Systems](https://international.unimore.it/singleins.html?ID=295) done at the [University of Modena and Reggio Emilia](https://international.unimore.it/) in the second semester of the academic year 2020/2021.
+Given the possible various applications of Computer Vision, we wanted to focus mainly on automotive applications and on useful, potential life saving, work.
+In fact, sadly, accidents while driving mainly occur because of distractions.
 
 ## License and Contacts
 

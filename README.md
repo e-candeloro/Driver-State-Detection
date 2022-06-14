@@ -107,9 +107,9 @@ pip install dlib --verbose
 If you have difficulties installing dlib, it is suggested to use the .whl precompiled package available online.
 
 ## Why this project
-This project was develop as a part for the final group project for the course of [Computer Vision and Cognitive Systems](https://international.unimore.it/singleins.html?ID=295) done at the [University of Modena and Reggio Emilia](https://international.unimore.it/) in the second semester of the academic year 2020/2021.
-Given the possible various applications of Computer Vision, we wanted to focus mainly on automotive applications and on useful, potential life saving, work.
-In fact, sadly, accidents while driving mainly occur because of distractions.
+This project was developed as part for a final group project for the course of [Computer Vision and Cognitive Systems](https://international.unimore.it/singleins.html?ID=295) done at the [University of Modena and Reggio Emilia](https://international.unimore.it/) in the second semester of the academic year 2020/2021.
+Given the possible applications of Computer Vision, we wanted to focus mainly on the automotive field, developing a useful and potential life saving proof of concept project.
+In fact, sadly, many fatal accidents happens [because of the driver distraction](https://www.nhtsa.gov/risky-driving/distracted-driving).
 
 ## License and Contacts
 

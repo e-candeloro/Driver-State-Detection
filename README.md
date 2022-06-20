@@ -1,6 +1,6 @@
 # Real Time Driver State Detection
 
-Real time webcam based driver attention state detection/monitoring using Python with the OpenCV and Dlib libraries.
+Real time, webcam based, driver attention state detection and monitoring using Python with the OpenCV and Dlib libraries.
 
 ![driver state detection demo](https://user-images.githubusercontent.com/67196406/173455413-ba95db40-6be5-4d64-9a1d-6c998854130e.gif)
 

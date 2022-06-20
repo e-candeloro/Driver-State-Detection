@@ -116,3 +116,11 @@ In fact, sadly, many fatal accidents happens [because of the driver distraction]
 This project is freely available under the MIT license. You can use/modify this code as long as you include the original license present in this repository in it.
 
 For any question or if you want to contribute to this project, feel free to contact me or open a pull request.
+
+## Improvements to make
+- [x] Reformat code in packages
+- [ ] Improve pose estimation using more/all the Dlib predicted face keypoints
+- [ ] Improve robustness of gaze detection
+- [ ] Improve perfomances of the script by minimizing image processing steps
+- [ ] Reformat classes to follow design patterns and Python conventions
+- [ ] Add argparser to run the script with various settings using the command line

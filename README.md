@@ -119,8 +119,9 @@ For any question or if you want to contribute to this project, feel free to cont
 
 ## Improvements to make
 - [x] Reformat code in packages
-- [ ] Improve pose estimation using more/all the Dlib predicted face keypoints
-- [ ] Improve robustness of gaze detection
-- [ ] Improve perfomances of the script by minimizing image processing steps
 - [ ] Reformat classes to follow design patterns and Python conventions
 - [ ] Add argparser to run the script with various settings using the command line
+- [ ] Improve perfomances of the script by minimizing image processing steps
+- [ ] Improve pose estimation using more/all the Dlib predicted face keypoints
+- [ ] Improve robustness of gaze detection
+

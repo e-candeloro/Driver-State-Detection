@@ -43,11 +43,16 @@ def main():
     various predicted face keypoints
     '''
 
-    Scorer = AttScorer(fps_lim, ear_tresh=0.15, ear_time_tresh=2, gaze_tresh=0.2,
-                       gaze_time_tresh=2, pitch_tresh=35, yaw_tresh=28, pose_time_tresh=2.5, verbose=False)
+    # instantiation of the eye detector and pose estimator objects
+    Eye_det = EyeDet(show_processing=False)
+
+    Head_pose = HeadPoseEst(show_axis=True)
+
     # instantiation of the attention scorer object, with the various thresholds
     # NOTE: set verbose to True for additional printed information about the scores
-
+    Scorer = AttScorer(fps_lim, ear_tresh=0.15, ear_time_tresh=2, gaze_tresh=0.2,
+                       gaze_time_tresh=2, pitch_tresh=35, yaw_tresh=28, pose_time_tresh=2.5, verbose=False)
+    
     # capture the input from the default system camera (camera number 0)
     cap = cv2.VideoCapture(CAPTURE_SOURCE)
     if not cap.isOpened():  # if the camera can't be opened exit the program
@@ -94,40 +99,50 @@ def main():
                 # predict the 68 facial keypoints position
                 landmarks = Predictor(gray, driver_face)
 
-                # instantiate the eye detector and pose estimator objects
-                Eye_det = EyeDet(gray, landmarks, show_processing=False)
-                Head_pose = HeadPoseEst(
-                    frame, landmarks, verbose=True)
-
                 # shows the eye keypoints (can be commented)
-                Eye_det.show_eye_keypoints(frame)
+                Eye_det.show_eye_keypoints(
+                    color_frame=frame, landmarks=landmarks)
 
-                ear = Eye_det.get_EAR()  # compute the EAR score of the eyes
+                # compute the EAR score of the eyes
+                ear = Eye_det.get_EAR(frame=gray, landmarks=landmarks)
+
                 # compute the PERCLOS score and state of tiredness
                 tired, perclos_score = Scorer.get_PERCLOS(ear)
-                gaze = Eye_det.get_Gaze_Score()  # compute the Gaze Score
-                frame_det, roll, pitch, yaw = Head_pose.get_pose()  # compute the head pose
 
-                if frame_det is not None:  # if the head pose estimation is successful, show the results
+                # compute the Gaze Score
+                gaze = Eye_det.get_Gaze_Score(
+                    frame=gray, landmarks=landmarks)
+
+                # compute the head pose
+                frame_det, roll, pitch, yaw = Head_pose.get_pose(
+                    frame=frame, landmarks=landmarks)
+
+                # if the head pose estimation is successful, show the results
+                if frame_det is not None:
                     frame = frame_det
 
-                if ear is not None:  # show the real-time EAR score
+                # show the real-time EAR score
+                if ear is not None:
                     cv2.putText(frame, "EAR:" + str(round(ear, 3)), (10, 50),
                                 cv2.FONT_HERSHEY_PLAIN, 2, (255, 255, 255), 1, cv2.LINE_AA)
 
-                if gaze is not None:  # show the real-time Gaze Score
+                # show the real-time Gaze Score
+                if gaze is not None:
                     cv2.putText(frame, "Gaze Score:" + str(round(gaze, 3)), (10, 80),
                                 cv2.FONT_HERSHEY_PLAIN, 2, (255, 255, 255), 1, cv2.LINE_AA)
 
                 # show the real-time PERCLOS score
                 cv2.putText(frame, "PERCLOS:" + str(round(perclos_score, 3)), (10, 110),
                             cv2.FONT_HERSHEY_PLAIN, 2, (255, 255, 255), 1, cv2.LINE_AA)
-                if tired:  # if the driver is tired, show and alert on screen
+                
+                # if the driver is tired, show and alert on screen
+                if tired:  
                     cv2.putText(frame, "TIRED!", (10, 280),
                                 cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 255), 1, cv2.LINE_AA)
 
+                # evaluate the scores for EAR, GAZE and HEAD POSE
                 asleep, looking_away, distracted = Scorer.eval_scores(
-                    ear, gaze, roll, pitch, yaw)  # evaluate the scores for EAR, GAZE and HEAD POSE
+                    ear, gaze, roll, pitch, yaw)  
 
                 # if the state of attention of the driver is not normal, show an alert on screen
                 if asleep:

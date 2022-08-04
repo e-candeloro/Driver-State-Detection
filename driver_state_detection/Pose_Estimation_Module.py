@@ -6,7 +6,7 @@ from Utils import rotationMatrixToEulerAngles, draw_pose_info
 
 class HeadPoseEstimator:
 
-    def __init__(self, frame, landmarks, camera_matrix=None, dist_coeffs=None, verbose: bool = False):
+    def __init__(self, camera_matrix=None, dist_coeffs=None, show_axis: bool = False):
         """
         Head Pose estimator class that contains the get_pose method for computing the three euler angles
         (roll, pitch, yaw) of the head. It uses the image/frame, the dlib detected landmarks of the head and,
@@ -14,16 +14,36 @@ class HeadPoseEstimator:
 
         Parameters
         ----------
-        frame: opencv image array
-            contains frame to be processed
-        landmarks:
-            list of landmarks detected with dlib face 68 keypoint detector
-        verbose: bool
+        camera_matrix: numpy array
+            Camera matrix of the camera used to capture the image/frame
+        dist_coeffs: numpy array
+            Distortion coefficients of the camera used to capture the image/frame
+        show_axis: bool
             If set to True, shows the head pose axis projected from the nose keypoint and the face landmarks points
             used for pose estimation (default is False)
         """
 
-        self.verbose = verbose
+        self.verbose = show_axis
+        self.camera_matrix = camera_matrix
+        self.dist_coeffs = dist_coeffs
+
+    def get_pose(self, frame, landmarks):
+        """
+        Estimate head pose using the head pose estimator object instantiated attribute
+
+        Parameters
+        ----------
+        frame: numpy array
+            Image/frame captured by the camera
+        landmarks: dlib.rectangle
+            Dlib detected 68 landmarks of the head
+
+        Returns
+        --------
+        - if successful: image_frame, roll, pitch, yaw (tuple)
+        - if unsuccessful: None,None,None,None (tuple)
+
+        """
         self.keypoints = landmarks  # dlib 68 landmarks
         self.frame = frame  # opencv image array
 
@@ -32,7 +52,7 @@ class HeadPoseEstimator:
                                 [0, 0, 200]])
         # array that specify the length of the 3 projected axis from the nose
 
-        if camera_matrix is None:
+        if self.camera_matrix is None:
             # if no camera matrix is given, estimate camera parameters using picture size
             self.size = frame.shape
             self.focal_length = self.size[1]
@@ -43,15 +63,8 @@ class HeadPoseEstimator:
                  [0, 0, 1]], dtype="double"
             )
 
-        else:
-            # take camera matrix
-            self.camera_matrix = camera_matrix
-
-        if dist_coeffs is None:  # if no distorsion coefficients are given, assume no lens distortion
+        if self.dist_coeffs is None:  # if no distorsion coefficients are given, assume no lens distortion
             self.dist_coeffs = np.zeros((4, 1))
-        else:
-            # take camera distortion coefficients
-            self.dist_coeffs = dist_coeffs
 
         # 3D Head model world space points (generic human head)
         self.model_points = np.array([
@@ -63,6 +76,7 @@ class HeadPoseEstimator:
             (150.0, -150.0, -125.0)  # Right mouth corner
 
         ])
+
         # 2D Point position of dlib face keypoints used for pose estimation
         self.image_points = np.array([
             (landmarks.part(30).x, landmarks.part(30).y),  # Nose tip
@@ -77,17 +91,7 @@ class HeadPoseEstimator:
                 54).y)  # Right mouth corner
         ], dtype="double")
 
-    def get_pose(self):
-        """
-        Estimate head pose using the head pose estimator object instantiated attribute
-
-        Returns
-        --------
-        - if successful: image_frame, roll, pitch, yaw (tuple)
-        - if unsuccessful: None,None,None,None (tuple)
-
-        """
-
+        # compute the pose of the head using the image points and the 3D model points
         (success, rvec, tvec) = cv2.solvePnP(self.model_points, self.image_points,
                                              self.camera_matrix, self.dist_coeffs, flags=cv2.SOLVEPNP_ITERATIVE)
         '''

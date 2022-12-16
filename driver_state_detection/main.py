@@ -1,4 +1,5 @@
 import time
+import argparse
 
 import cv2
 import dlib
@@ -8,9 +9,6 @@ from Utils import get_face_area
 from Eye_Dector_Module import EyeDetector as EyeDet
 from Pose_Estimation_Module import HeadPoseEstimator as HeadPoseEst
 from Attention_Scorer_Module import AttentionScorer as AttScorer
-
-# capture source number select the webcam to use (default is zero -> built in camera)
-CAPTURE_SOURCE = 0
 
 # camera matrix obtained from the camera calibration script, using a 9x6 chessboard
 camera_matrix = np.array(
@@ -24,6 +22,17 @@ dist_coeffs = np.array(
 
 
 def main():
+
+    parser = argparse.ArgumentParser(description='Driver State Detection')
+    parser.add_argument('-c', '--camera', type=int,
+                        default=0, metavar='', help='Camera number, default is 0 (webcam)')
+    parser.add_argument('-s', '--show', type=bool, default=False,
+                        metavar='', help='Show the processing, deafult is false')
+    parser.add_argument('-x', '--axis', type=bool, default=True,
+                        metavar='', help='Show the head pose axis, default is true')
+    # TODO: add option for choose if use camera matrix and dist coeffs
+
+    args = parser.parse_args()
 
     ctime = 0  # current time (used to compute FPS)
     ptime = 0  # past time (used to compute FPS)
@@ -44,17 +53,17 @@ def main():
     '''
 
     # instantiation of the eye detector and pose estimator objects
-    Eye_det = EyeDet(show_processing=False)
+    Eye_det = EyeDet(show_processing=args.show)
 
-    Head_pose = HeadPoseEst(show_axis=True)
+    Head_pose = HeadPoseEst(show_axis=args.axis)
 
     # instantiation of the attention scorer object, with the various thresholds
     # NOTE: set verbose to True for additional printed information about the scores
     Scorer = AttScorer(fps_lim, ear_tresh=0.15, ear_time_tresh=2, gaze_tresh=0.2,
                        gaze_time_tresh=2, pitch_tresh=35, yaw_tresh=28, pose_time_tresh=2.5, verbose=False)
-    
+
     # capture the input from the default system camera (camera number 0)
-    cap = cv2.VideoCapture(CAPTURE_SOURCE)
+    cap = cv2.VideoCapture(args.camera)
     if not cap.isOpened():  # if the camera can't be opened exit the program
         print("Cannot open camera")
         exit()
@@ -69,7 +78,7 @@ def main():
             break
 
          # if the frame comes from webcam, flip it so it looks like a mirror.
-        if CAPTURE_SOURCE == 0:
+        if args.camera == 0:
             frame = cv2.flip(frame, 2)
 
         if delta_time >= time_lim:  # if the time passed is bigger or equal than the frame time, process the frame
@@ -134,15 +143,15 @@ def main():
                 # show the real-time PERCLOS score
                 cv2.putText(frame, "PERCLOS:" + str(round(perclos_score, 3)), (10, 110),
                             cv2.FONT_HERSHEY_PLAIN, 2, (255, 255, 255), 1, cv2.LINE_AA)
-                
+
                 # if the driver is tired, show and alert on screen
-                if tired:  
+                if tired:
                     cv2.putText(frame, "TIRED!", (10, 280),
                                 cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 255), 1, cv2.LINE_AA)
 
                 # evaluate the scores for EAR, GAZE and HEAD POSE
                 asleep, looking_away, distracted = Scorer.eval_scores(
-                    ear, gaze, roll, pitch, yaw)  
+                    ear, gaze, roll, pitch, yaw)
 
                 # if the state of attention of the driver is not normal, show an alert on screen
                 if asleep:

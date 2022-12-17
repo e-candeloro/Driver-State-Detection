@@ -106,6 +106,22 @@ pip install dlib --verbose
 
 If you have difficulties installing dlib, it is suggested to use the .whl precompiled package available online.
 
+## Usage
+
+The scripts can be used with all default options and parameters by calling it via command line:
+
+    python main.py
+
+For the list of possible arguments, write:
+
+    python main.py --help
+
+Example of a possible use with parameters:
+
+    python main.py ---ear_time_tresh 5
+
+This will sets to 5 seconds the eye closure time before a warning  message is shown on screen
+
 ## Why this project
 This project was developed as part for a final group project for the course of [Computer Vision and Cognitive Systems](https://international.unimore.it/singleins.html?ID=295) done at the [University of Modena and Reggio Emilia](https://international.unimore.it/) in the second semester of the academic year 2020/2021.
 Given the possible applications of Computer Vision, we wanted to focus mainly on the automotive field, developing a useful and potential life saving proof of concept project.
@@ -119,8 +135,8 @@ For any question or if you want to contribute to this project, feel free to cont
 
 ## Improvements to make
 - [x] Reformat code in packages
+- [x] Add argparser to run the script with various settings using the command line
 - [ ] Reformat classes to follow design patterns and Python conventions
-- [ ] Add argparser to run the script with various settings using the command line
 - [ ] Improve perfomances of the script by minimizing image processing steps
 - [ ] Improve pose estimation using more/all the Dlib predicted face keypoints
 - [ ] Improve robustness of gaze detection

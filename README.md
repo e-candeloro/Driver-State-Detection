@@ -107,6 +107,9 @@ pip install dlib --verbose
 If you have difficulties installing dlib, it is suggested to use the .whl precompiled package available online.
 
 ## Usage
+First navigate inside the driver state detection folder:
+    
+    cd driver_state_detection
 
 The scripts can be used with all default options and parameters by calling it via command line:
 
@@ -136,6 +139,7 @@ For any question or if you want to contribute to this project, feel free to cont
 ## Improvements to make
 - [x] Reformat code in packages
 - [x] Add argparser to run the script with various settings using the command line
+- [ ] Add argparser option for importing and using the camera matrix and dist. coefficients
 - [ ] Reformat classes to follow design patterns and Python conventions
 - [ ] Improve perfomances of the script by minimizing image processing steps
 - [ ] Improve pose estimation using more/all the Dlib predicted face keypoints

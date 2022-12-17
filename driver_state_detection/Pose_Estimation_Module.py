@@ -23,7 +23,7 @@ class HeadPoseEstimator:
             used for pose estimation (default is False)
         """
 
-        self.verbose = show_axis
+        self.show_axis = show_axis
         self.camera_matrix = camera_matrix
         self.dist_coeffs = dist_coeffs
 
@@ -132,7 +132,7 @@ class HeadPoseEstimator:
             euler_angles = -cv2.decomposeProjectionMatrix(P)[6] -> extracting euler angles for yaw pitch and roll from the projection matrix
             """
 
-            if self.verbose:
+            if self.show_axis:
                 self.frame = draw_pose_info(
                     self.frame, nose, nose_end_point2D, roll, pitch, yaw)
                 # draws 3d axis from the nose and to the computed projection points

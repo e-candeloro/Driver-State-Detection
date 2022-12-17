@@ -24,23 +24,64 @@ dist_coeffs = np.array(
 def main():
 
     parser = argparse.ArgumentParser(description='Driver State Detection')
+
+    # selection the camera number, default is 0 (webcam)
     parser.add_argument('-c', '--camera', type=int,
                         default=0, metavar='', help='Camera number, default is 0 (webcam)')
-    parser.add_argument('-s', '--show', type=bool, default=False,
-                        metavar='', help='Show the processing, deafult is false')
-    parser.add_argument('-x', '--axis', type=bool, default=True,
-                        metavar='', help='Show the head pose axis, default is true')
+
+    # selection of fps limit for computing time between frames
+    parser.add_argument('-F', '--fps_limit', type=int, default=11, metavar='',
+                        help='FPS limit, default is 11 (WARNING: if this surpasses the fps max rate reachable by your device, it will cause problems for the scores computation')
+
     # TODO: add option for choose if use camera matrix and dist coeffs
 
+    # visualisation parameters
+    parser.add_argument('--show_fps', type=bool, default=True,
+                        metavar='', help='Show the actual FPS of the capture stream, default is true')
+    parser.add_argument('--show_proc_time', type=bool, default=True,
+                        metavar='', help='Show the processing time for a single frame, default is true')
+    parser.add_argument('--show_eye_proc', type=bool, default=False,
+                        metavar='', help='Show the eyes processing, deafult is false')
+    parser.add_argument('--show_axis', type=bool, default=True,
+                        metavar='', help='Show the head pose axis, default is true')
+    parser.add_argument('--verbose', type=bool, default=False,
+                        metavar='', help='Prints additional info, default is false')
+
+    # Attention Scorer parameters (EAR, Gaze Score, Pose)
+    parser.add_argument('--ear_tresh', type=float, default=0.15,
+                        metavar='', help='Sets the EAR threshold for the Attention Scorer, default is 0.15')
+    parser.add_argument('--ear_time_tresh', type=float, default=2,
+                        metavar='', help='Sets the EAR time (seconds) threshold for the Attention Scorer, default is 2 seconds')
+    parser.add_argument('--gaze_tresh', type=float, default=0.2,
+                        metavar='', help='Sets the Gaze Score threshold for the Attention Scorer, default is 0.2')
+    parser.add_argument('--gaze_time_tresh', type=float, default=2, metavar='',
+                        help='Sets the Gaze Score time (seconds) threshold for the Attention Scorer, default is 2 seconds')
+    parser.add_argument('--pitch_tresh', type=float, default=35,
+                        metavar='', help='Sets the PITCH threshold (degrees) for the Attention Scorer, default is 35 degrees')
+    parser.add_argument('--yaw_tresh', type=float, default=28,
+                        metavar='', help='Sets the YAW threshold (degrees) for the Attention Scorer, default is 28 degrees')
+    parser.add_argument('--pose_time_tresh', type=float, default=2.5,
+                        metavar='', help='Sets the Pose time threshold (seconds) for the Attention Scorer, default is 2.5 seconds')
+
+    # parse the arguments and store them in the args variable dictionary
     args = parser.parse_args()
+
+    if args.verbose:
+        print(f"Arguments and Parameters used:\n{args}\n")
+
+    if not cv2.useOptimized():
+        try:
+            cv2.setUseOptimized(True)  # set OpenCV optimization to True
+        except:
+            print(
+                "OpenCV optimization could not be set to True, the script may be slower than expected")
 
     ctime = 0  # current time (used to compute FPS)
     ptime = 0  # past time (used to compute FPS)
     prev_time = 0  # previous time variable, used to set the FPS limit
-    fps_lim = 11  # FPS upper limit value, needed for estimating the time for each frame and increasing performances
+    # FPS upper limit value, needed for estimating the time for each frame and increasing performances
+    fps_lim = args.fps_limit
     time_lim = 1. / fps_lim  # time window for each frame taken by the webcam
-
-    cv2.setUseOptimized(True)  # set OpenCV optimization to True
 
     # instantiation of the dlib face detector object
     Detector = dlib.get_frontal_face_detector()
@@ -53,14 +94,14 @@ def main():
     '''
 
     # instantiation of the eye detector and pose estimator objects
-    Eye_det = EyeDet(show_processing=args.show)
+    Eye_det = EyeDet(show_processing=args.show_eye_proc)
 
-    Head_pose = HeadPoseEst(show_axis=args.axis)
+    Head_pose = HeadPoseEst(show_axis=args.show_axis)
 
     # instantiation of the attention scorer object, with the various thresholds
     # NOTE: set verbose to True for additional printed information about the scores
-    Scorer = AttScorer(fps_lim, ear_tresh=0.15, ear_time_tresh=2, gaze_tresh=0.2,
-                       gaze_time_tresh=2, pitch_tresh=35, yaw_tresh=28, pose_time_tresh=2.5, verbose=False)
+    Scorer = AttScorer(fps_lim, ear_tresh=args.ear_tresh, ear_time_tresh=args.ear_time_tresh, gaze_tresh=args.gaze_tresh,
+                       gaze_time_tresh=args.gaze_time_tresh, pitch_tresh=args.pitch_tresh, yaw_tresh=args.yaw_tresh, pose_time_tresh=args.pose_time_tresh, verbose=args.verbose)
 
     # capture the input from the default system camera (camera number 0)
     cap = cv2.VideoCapture(args.camera)
@@ -88,6 +129,10 @@ def main():
             ctime = time.perf_counter()
             fps = 1.0 / float(ctime - ptime)
             ptime = ctime
+
+            # start the tick counter for computing the processing time for each frame
+            e1 = cv2.getTickCount()
+
             cv2.putText(frame, "FPS:" + str(round(fps, 0)), (10, 400), cv2.FONT_HERSHEY_PLAIN, 2,
                         (255, 0, 255), 1)
 
@@ -163,6 +208,18 @@ def main():
                 if distracted:
                     cv2.putText(frame, "DISTRACTED!", (10, 340),
                                 cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 255), 1, cv2.LINE_AA)
+
+            # stop the tick counter for computing the processing time for each frame
+            e2 = cv2.getTickCount()
+            # processign time in milliseconds
+            proc_time_frame_ms = ((e2 - e1) / cv2.getTickFrequency()) * 1000
+            # print fps and processing time per frame on screen
+            if args.show_fps:
+                cv2.putText(frame, "FPS:" + str(round(fps, 0)), (10, 400), cv2.FONT_HERSHEY_PLAIN, 2,
+                            (255, 0, 255), 1)
+            if args.show_proc_time:
+                cv2.putText(frame, "PROC. TIME FRAME:" + str(round(proc_time_frame_ms, 0)) + 'ms', (10, 430), cv2.FONT_HERSHEY_PLAIN, 2,
+                            (255, 0, 255), 1)
 
             cv2.imshow("Frame", frame)  # show the frame on screen
 

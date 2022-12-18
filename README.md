@@ -121,7 +121,7 @@ For the list of possible arguments, write:
 
 Example of a possible use with parameters:
 
-    python main.py ---ear_time_tresh 5
+    python main.py --ear_time_tresh 5
 
 This will sets to 5 seconds the eye closure time before a warning  message is shown on screen
 

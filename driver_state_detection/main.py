@@ -133,9 +133,6 @@ def main():
             # start the tick counter for computing the processing time for each frame
             e1 = cv2.getTickCount()
 
-            cv2.putText(frame, "FPS:" + str(round(fps, 0)), (10, 400), cv2.FONT_HERSHEY_PLAIN, 2,
-                        (255, 0, 255), 1)
-
             # transform the BGR frame in grayscale
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             # apply a bilateral filter to lower noise but keep frame details

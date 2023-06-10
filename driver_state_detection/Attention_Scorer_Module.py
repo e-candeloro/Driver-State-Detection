@@ -4,7 +4,7 @@ import time
 class AttentionScorer:
 
     def __init__(self, capture_fps: int, ear_tresh, gaze_tresh, perclos_tresh=0.2, ear_time_tresh=4.0, pitch_tresh=35,
-                 yaw_tresh=30, gaze_time_tresh=4.0, roll_tresh=None, pose_time_tresh=4.0, verbose=False):
+                 yaw_tresh=30, gaze_time_tresh=4.0, roll_tresh=30, pose_time_tresh=4.0, verbose=False):
         """
         Attention Scorer class that contains methods for estimating EAR,Gaze_Score,PERCLOS and Head Pose over time,
         with the given thresholds (time tresholds and value tresholds)
@@ -142,7 +142,7 @@ class AttentionScorer:
         elif self.gaze_counter > 0:
             self.gaze_counter -= 1
 
-        if ((self.roll_tresh is not None and head_roll is not None and head_roll > self.roll_tresh) or (
+        if ((self.roll_tresh is not None and head_roll is not None and abs(head_roll) > self.roll_tresh) or (
                 head_pitch is not None and abs(head_pitch) > self.pitch_tresh) or (
                 head_yaw is not None and abs(head_yaw) > self.yaw_tresh)):
             if not distracted:

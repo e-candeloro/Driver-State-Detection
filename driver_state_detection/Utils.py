@@ -78,10 +78,12 @@ def get_array_keypoints(landmarks, dtype="int", verbose: bool = False):
     return points_array
 
 
-def isRotationMatrix(R):
+def isRotationMatrix(R, precision=1e-4):
     """
     Checks if a matrix is a rotation matrix
     :param R: np.array matrix of 3 by 3
+    :param precision: float
+        precision to respect to accept a zero value in identity matrix check (default is 1e-4)
     :return: True or False
         Return True if a matrix is a rotation matrix, False if not
     """
@@ -89,35 +91,42 @@ def isRotationMatrix(R):
     shouldBeIdentity = np.dot(Rt, R)
     I = np.identity(3, dtype=R.dtype)
     n = np.linalg.norm(I - shouldBeIdentity)
-    return n < 1e-6
+    return n < precision
 
 
-def rotationMatrixToEulerAngles(R):
-    """
-    Computes the Tait–Bryan Euler angles from a Rotation Matrix.
+def rotationMatrixToEulerAngles(R, precision=1e-4):
+    '''
+    Computes the Tait–Bryan Euler (XYZ) angles from a Rotation Matrix.
     Also checks if there is a gymbal lock and eventually use an alternative formula
     :param R: np.array
         3 x 3 Rotation matrix
-    :return: (roll, pitch, yaw) tuple of float numbers
-        Euler angles in radians
-    """
+    :param precision: float
+        precision to respect to accept a zero value in identity matrix check (default is 1e-4)
+    :return: (yaw, pitch, roll) tuple of float numbers
+        Euler angles in radians in the order of YAW, PITCH, ROLL
+    '''
+
     # Calculates Tait–Bryan Euler angles from a Rotation Matrix
-    assert (isRotationMatrix(R))  # check if it's a Rmat
+    assert (isRotationMatrix(R, precision))  # check if it's a Rmat
 
+    # assert that sqrt(R11^2 + R21^2) != 0
     sy = np.sqrt(R[0, 0] * R[0, 0] + R[1, 0] * R[1, 0])
-    singular = sy < 1e-6
+    singular = sy < precision
 
-    if not singular:  # check if it's a gymbal lock situation
-        x = np.arctan2(R[2, 1], R[2, 2])
+    if not singular:  # if not in a singularity, use the standard formula
+        x = np.arctan2(R[2, 1], R[2, 2])  # atan2(R31, R33) -> YAW, angle PSI
+
+        # atan2(-R31, sqrt(R11^2 + R21^2)) -> PITCH, angle delta
         y = np.arctan2(-R[2, 0], sy)
-        z = np.arctan2(R[1, 0], R[0, 0])
+
+        z = np.arctan2(R[1, 0], R[0, 0])  # atan2(R21,R11) -> ROLL, angle phi
 
     else:  # if in gymbal lock, use different formula for yaw, pitch roll
         x = np.arctan2(-R[1, 2], R[1, 1])
         y = np.arctan2(-R[2, 0], sy)
         z = 0
 
-    return np.array([x, y, z])
+    return np.array([x, y, z])  # returns YAW, PITCH, ROLL angles in radians
 
 
 def draw_pose_info(frame, img_point, point_proj, roll=None, pitch=None, yaw=None):

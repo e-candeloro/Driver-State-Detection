@@ -56,10 +56,12 @@ def main():
                         metavar='', help='Sets the Gaze Score threshold for the Attention Scorer, default is 0.2')
     parser.add_argument('--gaze_time_tresh', type=float, default=2, metavar='',
                         help='Sets the Gaze Score time (seconds) threshold for the Attention Scorer, default is 2 seconds')
-    parser.add_argument('--pitch_tresh', type=float, default=35,
-                        metavar='', help='Sets the PITCH threshold (degrees) for the Attention Scorer, default is 35 degrees')
-    parser.add_argument('--yaw_tresh', type=float, default=28,
-                        metavar='', help='Sets the YAW threshold (degrees) for the Attention Scorer, default is 28 degrees')
+    parser.add_argument('--pitch_tresh', type=float, default=30,
+                        metavar='', help='Sets the PITCH threshold (degrees) for the Attention Scorer, default is 30 degrees')
+    parser.add_argument('--yaw_tresh', type=float, default=20,
+                        metavar='', help='Sets the YAW threshold (degrees) for the Attention Scorer, default is 20 degrees')
+    parser.add_argument('--roll_tresh', type=float, default=30,
+                        metavar='', help='Sets the ROLL threshold (degrees) for the Attention Scorer, default is 30 degrees')
     parser.add_argument('--pose_time_tresh', type=float, default=2.5,
                         metavar='', help='Sets the Pose time threshold (seconds) for the Attention Scorer, default is 2.5 seconds')
 
@@ -101,7 +103,8 @@ def main():
     # instantiation of the attention scorer object, with the various thresholds
     # NOTE: set verbose to True for additional printed information about the scores
     Scorer = AttScorer(fps_lim, ear_tresh=args.ear_tresh, ear_time_tresh=args.ear_time_tresh, gaze_tresh=args.gaze_tresh,
-                       gaze_time_tresh=args.gaze_time_tresh, pitch_tresh=args.pitch_tresh, yaw_tresh=args.yaw_tresh, pose_time_tresh=args.pose_time_tresh, verbose=args.verbose)
+                       gaze_time_tresh=args.gaze_time_tresh, pitch_tresh=args.pitch_tresh, yaw_tresh=args.yaw_tresh,
+                       roll_tresh=args.roll_tresh, pose_time_tresh=args.pose_time_tresh, verbose=args.verbose)
 
     # capture the input from the default system camera (camera number 0)
     cap = cv2.VideoCapture(args.camera)
@@ -165,7 +168,7 @@ def main():
                     frame=gray, landmarks=landmarks)
 
                 # compute the head pose
-                frame_det, roll, pitch, yaw = Head_pose.get_pose(
+                frame_det, yaw, pitch, roll = Head_pose.get_pose(
                     frame=frame, landmarks=landmarks)
 
                 # if the head pose estimation is successful, show the results
@@ -192,8 +195,12 @@ def main():
                                 cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 255), 1, cv2.LINE_AA)
 
                 # evaluate the scores for EAR, GAZE and HEAD POSE
-                asleep, looking_away, distracted = Scorer.eval_scores(
-                    ear, gaze, roll, pitch, yaw)
+                asleep, looking_away, distracted = Scorer.eval_scores(ear_score=ear,
+                                                                      gaze_score=gaze,
+                                                                      head_roll=roll,
+                                                                      head_pitch=pitch,
+                                                                      head_yaw=yaw,
+                                                                      )
 
                 # if the state of attention of the driver is not normal, show an alert on screen
                 if asleep:
@@ -218,7 +225,8 @@ def main():
                 cv2.putText(frame, "PROC. TIME FRAME:" + str(round(proc_time_frame_ms, 0)) + 'ms', (10, 430), cv2.FONT_HERSHEY_PLAIN, 2,
                             (255, 0, 255), 1)
 
-            cv2.imshow("Frame", frame)  # show the frame on screen
+            # show the frame on screen
+            cv2.imshow("Press 'q' to terminate", frame)
 
         # if the key "q" is pressed on the keyboard, the program is terminated
         if cv2.waitKey(20) & 0xFF == ord('q'):

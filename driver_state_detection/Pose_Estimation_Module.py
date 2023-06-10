@@ -40,7 +40,7 @@ class HeadPoseEstimator:
 
         Returns
         --------
-        - if successful: image_frame, roll, pitch, yaw (tuple)
+        - if successful: image_frame, yaw, pitch, roll  (tuple)
         - if unsuccessful: None,None,None,None (tuple)
 
         """
@@ -91,6 +91,12 @@ class HeadPoseEstimator:
                 54).y)  # Right mouth corner
         ], dtype="double")
 
+        # rotation matrix for flipping the z axis reference frame of the head so it is consistent with the camera ref. frame!
+        self.R_flip = np.zeros((3, 3), dtype=np.float32)
+        self.R_flip[0, 0] = 1.0
+        self.R_flip[1, 1] = 1.0
+        self.R_flip[2, 2] = -1.0  # flip z axis
+
         # compute the pose of the head using the image points and the 3D model points
         (success, rvec, tvec) = cv2.solvePnP(self.model_points, self.image_points,
                                              self.camera_matrix, self.dist_coeffs, flags=cv2.SOLVEPNP_ITERATIVE)
@@ -117,9 +123,10 @@ class HeadPoseEstimator:
                 self.axis, rvec, tvec, self.camera_matrix, self.dist_coeffs)
 
             # using the Rodrigues formula, this functions computes the Rotation Matrix from the rotation vector
-            Rmat = cv2.Rodrigues(rvec)[0]
+            Rmat = np.matrix(cv2.Rodrigues(rvec)[0])
 
-            roll, pitch, yaw = rotationMatrixToEulerAngles(Rmat) * 180/np.pi
+            yaw, pitch, roll = rotationMatrixToEulerAngles(
+                self.R_flip*Rmat) * 180/np.pi
 
             """
             We use the rotationMatrixToEulerAngles function to compute the euler angles (roll, pitch, yaw) from the
@@ -141,7 +148,7 @@ class HeadPoseEstimator:
                         point.ravel().astype(int)), 2, (0, 255, 255), -1)
                 # draws the 6 keypoints used for the pose estimation
 
-            return self.frame, roll, pitch, yaw
+            return self.frame, yaw, pitch, roll
 
         else:
             return None, None, None, None

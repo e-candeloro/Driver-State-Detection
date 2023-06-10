@@ -27,7 +27,7 @@ def main():
 
     # selection the camera number, default is 0 (webcam)
     parser.add_argument('-c', '--camera', type=int,
-                        default=1, metavar='', help='Camera number, default is 0 (webcam)')
+                        default=0, metavar='', help='Camera number, default is 0 (webcam)')
 
     # selection of fps limit for computing time between frames
     parser.add_argument('-F', '--fps_limit', type=int, default=11, metavar='',
@@ -60,6 +60,8 @@ def main():
                         metavar='', help='Sets the PITCH threshold (degrees) for the Attention Scorer, default is 30 degrees')
     parser.add_argument('--yaw_tresh', type=float, default=20,
                         metavar='', help='Sets the YAW threshold (degrees) for the Attention Scorer, default is 20 degrees')
+    parser.add_argument('--roll_tresh', type=float, default=30,
+                        metavar='', help='Sets the ROLL threshold (degrees) for the Attention Scorer, default is 30 degrees')
     parser.add_argument('--pose_time_tresh', type=float, default=2.5,
                         metavar='', help='Sets the Pose time threshold (seconds) for the Attention Scorer, default is 2.5 seconds')
 
@@ -101,7 +103,8 @@ def main():
     # instantiation of the attention scorer object, with the various thresholds
     # NOTE: set verbose to True for additional printed information about the scores
     Scorer = AttScorer(fps_lim, ear_tresh=args.ear_tresh, ear_time_tresh=args.ear_time_tresh, gaze_tresh=args.gaze_tresh,
-                       gaze_time_tresh=args.gaze_time_tresh, pitch_tresh=args.pitch_tresh, yaw_tresh=args.yaw_tresh, pose_time_tresh=args.pose_time_tresh, verbose=args.verbose)
+                       gaze_time_tresh=args.gaze_time_tresh, pitch_tresh=args.pitch_tresh, yaw_tresh=args.yaw_tresh,
+                       roll_tresh=args.roll_tresh, pose_time_tresh=args.pose_time_tresh, verbose=args.verbose)
 
     # capture the input from the default system camera (camera number 0)
     cap = cv2.VideoCapture(args.camera)

@@ -27,7 +27,18 @@ class HeadPoseEstimator:
         self.camera_matrix = camera_matrix
         self.dist_coeffs = dist_coeffs
 
-    def get_pose(self, frame, landmarks):
+        # 3D Head model world space points (generic human head)
+        self.model_points = np.array([
+            (0.0, 0.0, 0.0),  # Nose tip
+            (0.0, -330.0, -65.0),  # Chin
+            (-225.0, 170.0, -135.0),  # Left eye left corner
+            (225.0, 170.0, -135.0),  # Right eye right corner
+            (-150.0, -150.0, -125.0),  # Left Mouth corner
+            (150.0, -150.0, -125.0)  # Right mouth corner
+
+        ])
+
+    def get_pose(self, frame, landmarks, prev_landmarks=None, smoothing_factor=0.5):
         """
         Estimate head pose using the head pose estimator object instantiated attribute
 
@@ -66,17 +77,6 @@ class HeadPoseEstimator:
         if self.dist_coeffs is None:  # if no distorsion coefficients are given, assume no lens distortion
             self.dist_coeffs = np.zeros((4, 1))
 
-        # 3D Head model world space points (generic human head)
-        self.model_points = np.array([
-            (0.0, 0.0, 0.0),  # Nose tip
-            (0.0, -330.0, -65.0),  # Chin
-            (-225.0, 170.0, -135.0),  # Left eye left corner
-            (225.0, 170.0, -135.0),  # Right eye right corner
-            (-150.0, -150.0, -125.0),  # Left Mouth corner
-            (150.0, -150.0, -125.0)  # Right mouth corner
-
-        ])
-
         # 2D Point position of dlib face keypoints used for pose estimation
         self.image_points = np.array([
             (landmarks.part(30).x, landmarks.part(30).y),  # Nose tip
@@ -91,11 +91,34 @@ class HeadPoseEstimator:
                 54).y)  # Right mouth corner
         ], dtype="double")
 
+        if prev_landmarks is not None:
+            self.prev_image_points = np.array([
+                (prev_landmarks.part(30).x, prev_landmarks.part(30).y),  # Nose tip
+                (prev_landmarks.part(8).x, prev_landmarks.part(8).y),  # Chin
+                (prev_landmarks.part(36).x, prev_landmarks.part(
+                    36).y),  # Left eye left corner
+                (prev_landmarks.part(45).x, prev_landmarks.part(
+                    45).y),  # Right eye right corne
+                (prev_landmarks.part(48).x, prev_landmarks.part(
+                    48).y),  # Left Mouth corner
+                (prev_landmarks.part(54).x, prev_landmarks.part(
+                    54).y)  # Right mouth corner
+            ], dtype="double")
+
+        else:
+            self.prev_image_points = self.image_points
+
+        self.smoothing_factor = smoothing_factor
+
         # rotation matrix for flipping the z axis reference frame of the head so it is consistent with the camera ref. frame!
         self.R_flip = np.zeros((3, 3), dtype=np.float32)
         self.R_flip[0, 0] = 1.0
         self.R_flip[1, 1] = 1.0
         self.R_flip[2, 2] = -1.0  # flip z axis
+
+        # smooth the image points using the previous image points
+        self.image_points = self.smoothing_factor * self.prev_image_points + \
+            (1 - self.smoothing_factor) * self.image_points
 
         # compute the pose of the head using the image points and the 3D model points
         (success, rvec, tvec) = cv2.solvePnP(self.model_points, self.image_points,

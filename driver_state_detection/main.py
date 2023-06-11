@@ -48,6 +48,8 @@ def main():
                         metavar='', help='Prints additional info, default is false')
 
     # Attention Scorer parameters (EAR, Gaze Score, Pose)
+    parser.add_argument('--smooth_factor', type=float, default=0.5,
+                        metavar='', help='Sets the smooth factor for the head pose estimation keypoint smoothing, default is 0.5')
     parser.add_argument('--ear_tresh', type=float, default=0.15,
                         metavar='', help='Sets the EAR threshold for the Attention Scorer, default is 0.15')
     parser.add_argument('--ear_time_tresh', type=float, default=2,
@@ -84,6 +86,9 @@ def main():
     # FPS upper limit value, needed for estimating the time for each frame and increasing performances
     fps_lim = args.fps_limit
     time_lim = 1. / fps_lim  # time window for each frame taken by the webcam
+
+    # previous landmarks for head pose estimation (initially set to None) (used for smoothing)
+    prev_landmarks = None
 
     # instantiation of the dlib face detector object
     Detector = dlib.get_frontal_face_detector()
@@ -169,7 +174,9 @@ def main():
 
                 # compute the head pose
                 frame_det, yaw, pitch, roll = Head_pose.get_pose(
-                    frame=frame, landmarks=landmarks)
+                    frame=frame, landmarks=landmarks, prev_landmarks=prev_landmarks, smoothing_factor=args.smooth_factor)
+                # update the previous landmarks
+                prev_landmarks = landmarks
 
                 # if the head pose estimation is successful, show the results
                 if frame_det is not None:

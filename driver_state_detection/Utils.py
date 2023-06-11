@@ -153,11 +153,11 @@ def draw_pose_info(frame, img_point, point_proj, roll=None, pitch=None, yaw=None
         point_proj[2].ravel().astype(int)), (0, 0, 255), 3)
 
     if roll is not None and pitch is not None and yaw is not None:
-        cv2.putText(frame, "Roll:" + str(round(roll, 3)), (500, 50),
+        cv2.putText(frame, "Roll:" + str(round(roll, 0)), (500, 50),
                     cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1, cv2.LINE_AA)
-        cv2.putText(frame, "Pitch:" + str(round(pitch, 3)), (500, 70),
+        cv2.putText(frame, "Pitch:" + str(round(pitch, 0)), (500, 70),
                     cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1, cv2.LINE_AA)
-        cv2.putText(frame, "Yaw:" + str(round(yaw, 3)), (500, 90),
+        cv2.putText(frame, "Yaw:" + str(round(yaw, 0)), (500, 90),
                     cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1, cv2.LINE_AA)
 
     return frame

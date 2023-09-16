@@ -4,6 +4,10 @@ from numpy import linalg as LA
 from Utils import resize
 
 
+EYES_LMS_NUMS = [33, 133, 160, 144, 158, 153, 362, 263, 385, 380, 387, 373]
+LEFT_IRIS_NUM = 468
+RIGHT_IRIS_NUM = 473
+
 class EyeDetector:
 
     def __init__(self, show_processing: bool = False):
@@ -28,7 +32,7 @@ class EyeDetector:
         self.show_processing = show_processing
         self.eye_width = None
 
-    def show_eye_keypoints(self, color_frame, landmarks):
+    def show_eye_keypoints(self, color_frame, landmarks, frame_size):
         """
         Shows eyes keypoints found in the face, drawing red circles in their position in the frame/image
 
@@ -43,9 +47,9 @@ class EyeDetector:
     
         self.keypoints = landmarks
 
-        for n in range(36, 48):
-            x = self.keypoints.part(n).x
-            y = self.keypoints.part(n).y
+        for n in EYES_LMS_NUMS:
+            x = landmarks[n, 0] * frame_size[0]
+            y = landmarks[n, 1] * frame_size[1]
             cv2.circle(color_frame, (x, y), 1, (0, 0, 255), -1)
         return
 
@@ -78,14 +82,14 @@ class EyeDetector:
         # numpy array for storing the keypoints positions of the right eye
         eye_pts_r = np.zeros(shape=(6, 2))
 
-        for n in range(36, 42):  # the dlib keypoints from 36 to 42 are referring to the left eye
-            point_l = pts.part(n)  # save the i-keypoint of the left eye
-            point_r = pts.part(n + 6)  # save the i-keypoint of the right eye
+        for i in range(len(EYES_LMS_NUMS)//2):  # the dlib keypoints from 36 to 42 are referring to the left eye
+            point_l = landmarks[EYES_LMS_NUMS[i]]
+            point_r = landmarks[EYES_LMS_NUMS[i+6]]
+
             # array of x,y coordinates for the left eye reference point
-            eye_pts_l[i] = [point_l.x, point_l.y]
+            eye_pts_l[i] = [point_l[0], point_l[1]]
             # array of x,y coordinates for the right eye reference point
-            eye_pts_r[i] = [point_r.x, point_r.y]
-            i += 1  # increasing the auxiliary counter
+            eye_pts_r[i] = [point_r[0], point_r[1]]
 
         def EAR_eye(eye_pts):
             """
@@ -94,8 +98,8 @@ class EyeDetector:
             :return: ear_eye
                 EAR of the eye
             """
-            ear_eye = (LA.norm(eye_pts[1] - eye_pts[5]) + LA.norm(
-                eye_pts[2] - eye_pts[4])) / (2 * LA.norm(eye_pts[0] - eye_pts[3]))
+            ear_eye = (LA.norm(eye_pts[2] - eye_pts[3]) + LA.norm(
+                eye_pts[4] - eye_pts[5])) / (2 * LA.norm(eye_pts[0] - eye_pts[1]))
             '''
             EAR is computed as the mean of two measures of eye opening (see dlib face keypoints for the eye)
             divided by the eye lenght
@@ -133,92 +137,16 @@ class EyeDetector:
         self.keypoints = landmarks
         self.frame = frame
 
-        def get_ROI(left_corner_keypoint_num: int):
-            """
-            Get the ROI bounding box of the eye given one of it's dlib keypoint found in the face
+        left_iris = landmarks[LEFT_IRIS_NUM, :2]
+        right_iris = landmarks[RIGHT_IRIS_NUM, :2]
 
-            :param left_corner_keypoint_num: most left dlib keypoint of the eye
-            :return: eye_roi
-                Sub-frame of the eye region of the opencv frame/image
-            """
+        left_eye_center = landmarks[]
 
-            kp_num = left_corner_keypoint_num
-
-            eye_array = np.array(
-                [(self.keypoints.part(kp_num).x, self.keypoints.part(kp_num).y),
-                 (self.keypoints.part(kp_num+1).x,
-                  self.keypoints.part(kp_num+1).y),
-                 (self.keypoints.part(kp_num+2).x,
-                  self.keypoints.part(kp_num+2).y),
-                 (self.keypoints.part(kp_num+3).x,
-                  self.keypoints.part(kp_num+3).y),
-                 (self.keypoints.part(kp_num+4).x,
-                  self.keypoints.part(kp_num+4).y),
-                 (self.keypoints.part(kp_num+5).x, self.keypoints.part(kp_num+5).y)], np.int32)
-
-            min_x = np.min(eye_array[:, 0])
-            max_x = np.max(eye_array[:, 0])
-            min_y = np.min(eye_array[:, 1])
-            max_y = np.max(eye_array[:, 1])
-
-            eye_roi = self.frame[min_y-2:max_y+2, min_x-2:max_x+2]
-
-            return eye_roi
-
-        def get_gaze(eye_roi):
-            """
-            Computes the L2 norm between the center point of the Eye ROI
-            (eye bounding box) and the center of the eye pupil
-            :param eye_roi: float
-            :return: (gaze_score, eye_roi): tuple
-                tuple
-            """
-
-            eye_center = np.array(
-                [(eye_roi.shape[1] // 2), (eye_roi.shape[0] // 2)])  # eye ROI center position
-            gaze_score = None
-            circles = None
-
-            # a bilateral filter is applied for reducing noise and keeping eye details
-            eye_roi = cv2.bilateralFilter(eye_roi, 4, 40, 40)
-
-            circles = cv2.HoughCircles(eye_roi, cv2.HOUGH_GRADIENT, 1, 10,
-                                       param1=90, param2=6, minRadius=1, maxRadius=9)
-            # a Hough Transform is used to find the iris circle and his center (the pupil) on the grayscale eye_roi image with the contours drawn in white
-
-            if circles is not None and len(circles) > 0:
-                circles = np.uint16(np.around(circles))
-                circle = circles[0][0, :]
-
-                cv2.circle(
-                    eye_roi, (circle[0], circle[1]), circle[2], (255, 255, 255), 1)
-                cv2.circle(
-                    eye_roi, (circle[0], circle[1]), 1, (255, 255, 255), -1)
-
-                # pupil position is the first circle center found with the Hough Transform
-                pupil_position = np.array([int(circle[0]), int(circle[1])])
-
-                cv2.line(eye_roi, (eye_center[0], eye_center[1]), (
-                    pupil_position[0], pupil_position[1]), (255, 255, 255), 1)
-
-                gaze_score = LA.norm(
-                    pupil_position - eye_center) / eye_center[0]
-                # computes the L2 distance between the eye_center and the pupil position
-
-            cv2.circle(eye_roi, (eye_center[0],
-                                 eye_center[1]), 1, (0, 0, 0), -1)
-
-            if gaze_score is not None:
-                return gaze_score, eye_roi
-            else:
-                return None, None
-
-        left_eye_ROI = get_ROI(36)  # computes the ROI for the left eye
-        right_eye_ROI = get_ROI(42)  # computes the ROI for the right eye
+        gaze_score = LA.norm(
+            pupil_position - eye_center) / eye_center[0]
+        # computes the L2 distance between the eye_center and the pupil position
 
         # computes the gaze scores for the eyes
-        gaze_eye_left, left_eye = get_gaze(left_eye_ROI)
-        gaze_eye_right, right_eye = get_gaze(right_eye_ROI)
 
         # if show_processing is True, shows the eyes ROI, eye center, pupil center and line distance
         if self.show_processing and (left_eye is not None) and (right_eye is not None):

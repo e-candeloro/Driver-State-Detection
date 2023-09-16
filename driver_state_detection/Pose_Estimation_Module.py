@@ -1,7 +1,59 @@
 import cv2
 import numpy as np
 
+from face_geometry import *
 from Utils import rotationMatrixToEulerAngles, draw_pose_info
+
+
+def _rmat2euler(rmat):
+    """
+    This function converts a rotation matrix into Euler angles. It first checks if the given matrix is a valid
+    rotation matrix by comparing its calculated identity matrix to the identity matrix. If it is a valid rotation
+    matrix, it checks for the presence of a gimbal lock situation. If there is no gimbal lock, it calculates the
+    Euler angles using the arctan2 function. If there is a gimbal lock, it uses a different formula for yaw, pitch,
+    and roll. The function then checks the signs of the angles and adjusts them accordingly. Finally, it returns the
+    Euler angles in degrees, rounded to two decimal places.
+
+    Parameters
+    ----------
+    rmat: A rotation matrix as a np.ndarray.
+
+    Returns
+    -------
+    Euler angles in degrees as a np.ndarray.
+
+    """
+    rtr = np.transpose(rmat)
+    r_identity = np.matmul(rtr, rmat)
+
+    I = np.identity(3, dtype=rmat.dtype)
+    if np.linalg.norm(r_identity - I) < 1e-6:
+        sy = (rmat[:2, 0] ** 2).sum() ** 0.5
+        singular = sy < 1e-6
+
+        if not singular:  # check if it's a gimbal lock situation
+            x = np.arctan2(rmat[2, 1], rmat[2, 2])
+            y = np.arctan2(-rmat[2, 0], sy)
+            z = np.arctan2(rmat[1, 0], rmat[0, 0])
+
+        else:  # if in gimbal lock, use different formula for yaw, pitch roll
+            x = np.arctan2(-rmat[1, 2], rmat[1, 1])
+            y = np.arctan2(-rmat[2, 0], sy)
+            z = 0
+
+        if x > 0:
+            x = (np.pi - x)
+        else:
+            x = -(np.pi + x)
+
+        if z > 0:
+            z = (np.pi - z)
+        else:
+            z = -(np.pi + z)
+
+        return (np.array([x, y, z]) * 180. / np.pi).round(2)
+    else:
+        print("Isn't rotation matrix")
 
 
 class HeadPoseEstimator:
@@ -26,19 +78,23 @@ class HeadPoseEstimator:
         self.show_axis = show_axis
         self.camera_matrix = camera_matrix
         self.dist_coeffs = dist_coeffs
+        self.focal_length = None
 
-        # 3D Head model world space points (generic human head)
-        self.model_points = np.array([
-            (0.0, 0.0, 0.0),  # Nose tip
-            (0.0, -330.0, -65.0),  # Chin
-            (-225.0, 170.0, -135.0),  # Left eye left corner
-            (225.0, 170.0, -135.0),  # Right eye right corner
-            (-150.0, -150.0, -125.0),  # Left Mouth corner
-            (150.0, -150.0, -125.0)  # Right mouth corner
+        self.pcf_calculated = False
 
-        ])
+        JAW_LMS_NUMS = [61, 291, 199]
+        model_lms_ids = JAW_LMS_NUMS + [
+            key for key, _ in procrustes_landmark_basis]
+        model_lms_ids.sort()
+        self.model_lms_ids = model_lms_ids
 
-    def get_pose(self, frame, landmarks, prev_landmarks=None, smoothing_factor=0.5):
+        NOSE_AXES_POINTS = np.array([
+            [7, 0, 10],
+            [0, 7, 6],
+            [0, 0, 14]], dtype=float)
+
+
+    def get_pose(self, frame, landmarks, frame_size, prev_landmarks=None, smoothing_factor=0.5):
         """
         Estimate head pose using the head pose estimator object instantiated attribute
 
@@ -55,74 +111,48 @@ class HeadPoseEstimator:
         - if unsuccessful: None,None,None,None (tuple)
 
         """
-        self.keypoints = landmarks  # dlib 68 landmarks
-        self.frame = frame  # opencv image array
 
-        self.axis = np.float32([[200, 0, 0],
-                                [0, 200, 0],
-                                [0, 0, 200]])
-        # array that specify the length of the 3 projected axis from the nose
+        rvec = None
+        tvec = None
+        model_img_lms = None
+        eulers = None
+        metric_lms = None
 
-        if self.camera_matrix is None:
-            # if no camera matrix is given, estimate camera parameters using picture size
-            self.size = frame.shape
-            self.focal_length = self.size[1]
-            self.center = (self.size[1] / 2, self.size[0] / 2)
-            self.camera_matrix = np.array(
-                [[self.focal_length, 0, self.center[0]],
-                 [0, self.focal_length, self.center[1]],
-                 [0, 0, 1]], dtype="double"
-            )
+        if not self.pcf_calculaged:
+            fr_w = frame_size[0]
+            fr_h = frame_size[1]
+            if self.camera_matrix is None:
+                fr_center = (fr_w // 2, fr_h // 2)
+                focal_length = fr_w
+                self.camera_matrix = np.array([
+                    [focal_length, 0, fr_center[0]],
+                    [0, focal_length, fr_center[1]],
+                    [0, 0, 1]], dtype="double")
+                self.focal_length = focal_length
+            if self.DIST_COEFFS is None:
+                self.DIST_COEFFS = np.zeros((5, 1))
 
-        if self.dist_coeffs is None:  # if no distorsion coefficients are given, assume no lens distortion
-            self.dist_coeffs = np.zeros((4, 1))
+            self.pcf = PCF(
+                frame_height=fr_h,
+                frame_width=fr_w,
+                fy=self.focal_length)
+            
+            self.pcf_calculated = True
 
-        # 2D Point position of dlib face keypoints used for pose estimation
-        self.image_points = np.array([
-            (landmarks.part(30).x, landmarks.part(30).y),  # Nose tip
-            (landmarks.part(8).x, landmarks.part(8).y),  # Chin
-            (landmarks.part(36).x, landmarks.part(
-                36).y),  # Left eye left corner
-            (landmarks.part(45).x, landmarks.part(
-                45).y),  # Right eye right corne
-            (landmarks.part(48).x, landmarks.part(
-                48).y),  # Left Mouth corner
-            (landmarks.part(54).x, landmarks.part(
-                54).y)  # Right mouth corner
-        ], dtype="double")
+        model_img_lms = (
+            np.clip(landmarks[self.model_lms_ids, :2], 0., 1.) * frame_size)
+        
+        metric_lms = get_metric_landmarks(
+            landmarks.T.copy(), self.pcf)[0].T
 
-        if prev_landmarks is not None:
-            self.prev_image_points = np.array([
-                (prev_landmarks.part(30).x, prev_landmarks.part(30).y),  # Nose tip
-                (prev_landmarks.part(8).x, prev_landmarks.part(8).y),  # Chin
-                (prev_landmarks.part(36).x, prev_landmarks.part(
-                    36).y),  # Left eye left corner
-                (prev_landmarks.part(45).x, prev_landmarks.part(
-                    45).y),  # Right eye right corne
-                (prev_landmarks.part(48).x, prev_landmarks.part(
-                    48).y),  # Left Mouth corner
-                (prev_landmarks.part(54).x, prev_landmarks.part(
-                    54).y)  # Right mouth corner
-            ], dtype="double")
+        model_metric_lms = metric_lms[self.model_lms_ids, :]
 
-        else:
-            self.prev_image_points = self.image_points
-
-        self.smoothing_factor = smoothing_factor
-
-        # rotation matrix for flipping the z axis reference frame of the head so it is consistent with the camera ref. frame!
-        self.R_flip = np.zeros((3, 3), dtype=np.float32)
-        self.R_flip[0, 0] = 1.0
-        self.R_flip[1, 1] = 1.0
-        self.R_flip[2, 2] = -1.0  # flip z axis
-
-        # smooth the image points using the previous image points
-        self.image_points = self.smoothing_factor * self.prev_image_points + \
-            (1 - self.smoothing_factor) * self.image_points
-
-        # compute the pose of the head using the image points and the 3D model points
-        (success, rvec, tvec) = cv2.solvePnP(self.model_points, self.image_points,
-                                             self.camera_matrix, self.dist_coeffs, flags=cv2.SOLVEPNP_ITERATIVE)
+        (solve_pnp_success, rvec, tvec) = cv2.solvePnP(
+            model_metric_lms,
+            model_img_lms,
+            self.camera_matrix,
+            self.dist_coeffs,
+            flags=cv2.SOLVEPNP_ITERATIVE)
         '''
         The OpenCV Solve PnP method computes the rotation and translation vectors with respect to the camera coordinate 
         system of the image_points referred to the 3d head model_points. It takes into account the camera matrix and
@@ -130,26 +160,23 @@ class HeadPoseEstimator:
         The method used is iterative (cv2.SOLVEPNP_ITERATIVE)
         An alternative method can be the cv2.SOLVEPNP_SQPNP
         '''
+        tvec = tvec.round(2)
 
-        if success:  # if the solvePnP succeed, compute the head pose, otherwise return None
-
+        if solve_pnp_success:
             rvec, tvec = cv2.solvePnPRefineVVS(
-                self.model_points, self.image_points, self.camera_matrix, self.dist_coeffs, rvec, tvec)
-            # this method is used to refine the rvec and tvec prediction
+                model_metric_lms,
+                model_img_lms,
+                self.camera_matrix,
+                self.dist_coeffs,
+                rvec,
+                tvec)
 
-            # Head nose point in the image plane
-            nose = (int(self.image_points[0][0]), int(self.image_points[0][1]))
+            rvec1 = np.array([rvec[2, 0], rvec[0, 0], rvec[1, 0]]).reshape((3, 1))
 
-            # this function computes the 3 projection axis from the nose point of the head, so we can use them to
-            # show the head pose later
-            (nose_end_point2D, _) = cv2.projectPoints(
-                self.axis, rvec, tvec, self.camera_matrix, self.dist_coeffs)
+            # cv2.Rodrigues: convert a rotation vector to a rotation matrix (also known as a Rodrigues rotation matrix)
+            rmat, _ = cv2.Rodrigues(rvec1)
 
-            # using the Rodrigues formula, this functions computes the Rotation Matrix from the rotation vector
-            Rmat = np.matrix(cv2.Rodrigues(rvec)[0])
-
-            yaw, pitch, roll = rotationMatrixToEulerAngles(
-                self.R_flip*Rmat) * 180/np.pi
+            eulers = _rmat2euler(rmat).reshape((-1, 1))
 
             """
             We use the rotationMatrixToEulerAngles function to compute the euler angles (roll, pitch, yaw) from the
@@ -162,16 +189,23 @@ class HeadPoseEstimator:
             euler_angles = -cv2.decomposeProjectionMatrix(P)[6] -> extracting euler angles for yaw pitch and roll from the projection matrix
             """
 
-            if self.show_axis:
-                self.frame = draw_pose_info(
-                    self.frame, nose, nose_end_point2D, roll, pitch, yaw)
-                # draws 3d axis from the nose and to the computed projection points
-                for point in self.image_points:
-                    cv2.circle(self.frame, tuple(
-                        point.ravel().astype(int)), 2, (0, 255, 255), -1)
-                # draws the 6 keypoints used for the pose estimation
+            (nose_axes_point2D, _) = cv2.projectPoints(
+                self.NOSE_AXES_POINTS,
+                rvec,
+                tvec,
+                self.camera_matrix,
+                self.dist_coeffs)
+            nose = tuple(model_img_lms[0, :2].astype(int))
 
-            return self.frame, yaw, pitch, roll
+            nose_x = tuple(nose_axes_point2D[0, 0].astype(int))
+            nose_y = tuple(nose_axes_point2D[1, 0].astype(int))
+            nose_z = tuple(nose_axes_point2D[2, 0].astype(int))
+
+            cv2.line(frame, nose, nose_x, (255, 0, 0), 2)
+            cv2.line(frame, nose, nose_y, (0, 255, 0), 2)
+            cv2.line(frame, nose, nose_z, (0, 0, 255), 2)
+
+            return frame, eulers[0], eulers[1], eulers[2]
 
         else:
             return None, None, None, None

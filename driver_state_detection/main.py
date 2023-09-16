@@ -4,6 +4,7 @@ import argparse
 import cv2
 import dlib
 import numpy as np
+import mediapipe as mp
 
 from Utils import get_face_area
 from Eye_Dector_Module import EyeDetector as EyeDet
@@ -91,14 +92,10 @@ def main():
     prev_landmarks = None
 
     # instantiation of the dlib face detector object
-    Detector = dlib.get_frontal_face_detector()
-    Predictor = dlib.shape_predictor(
-        "predictor/shape_predictor_68_face_landmarks.dat")  # instantiation of the dlib keypoint detector model
-    '''
-    the keypoint predictor is compiled in C++ and saved as a .dat inside the "predictor" folder in the project
-    inside the folder there is also a useful face keypoint image map to understand the position and numnber of the
-    various predicted face keypoints
-    '''
+    detector = mp.solutions.face_mesh.FaceMesh(static_image_mode=False,
+                                            min_detection_confidence=0.5,
+                                            min_tracking_confidence=0.5,
+                                            refine_landmarks=True)
 
     # instantiation of the eye detector and pose estimator objects
     Eye_det = EyeDet(show_processing=args.show_eye_proc)
@@ -143,24 +140,34 @@ def main():
 
             # transform the BGR frame in grayscale
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            frame_size = frame.shape[1], frame.shape[0]
             # apply a bilateral filter to lower noise but keep frame details
-            gray = cv2.bilateralFilter(gray, 5, 10, 10)
+            gray = np.expand_dims(cv2.bilateralFilter(gray, 5, 10, 10), axis=2)
+            gray = np.concatenate([gray, gray, gray], axis=2)
 
             # find the faces using the dlib face detector
-            faces = Detector(gray)
+            lms = detector.process(gray).multi_face_landmarks
 
-            if len(faces) > 0:  # process the frame only if at least a face is found
+            if lms:  # process the frame only if at least a face is found
 
                 # take only the bounding box of the biggest face
-                faces = sorted(faces, key=get_face_area, reverse=True)
-                driver_face = faces[0]
+                surface = 0
+                for lms0 in lms:
+                    landmarks = [np.array([point.x, point.y, point.z]) \
+                                 for point in lms0.landmark]
 
-                # predict the 68 facial keypoints position
-                landmarks = Predictor(gray, driver_face)
+                    landmarks = np.array(landmarks)
+
+                    dx = landmarks[:, 0].max() - landmarks[:, 0].min()
+                    dy = landmarks[:, 1].max() - landmarks[:, 1].min()
+                    new_surface = dx * dy
+                    if new_surface > surface:
+                        biggest_face = landmarks
+                landmarks = biggest_face
 
                 # shows the eye keypoints (can be commented)
                 Eye_det.show_eye_keypoints(
-                    color_frame=frame, landmarks=landmarks)
+                    color_frame=frame, landmarks=landmarks, frame_size=frame_size)
 
                 # compute the EAR score of the eyes
                 ear = Eye_det.get_EAR(frame=gray, landmarks=landmarks)
@@ -173,8 +180,9 @@ def main():
                     frame=gray, landmarks=landmarks)
 
                 # compute the head pose
-                frame_det, yaw, pitch, roll = Head_pose.get_pose(
-                    frame=frame, landmarks=landmarks, prev_landmarks=prev_landmarks, smoothing_factor=args.smooth_factor)
+                frame_det, roll, pitch, yaw = Head_pose.get_pose(
+                    frame=frame, landmarks=landmarks, frame_size=frame_size,
+                    prev_landmarks=prev_landmarks, smoothing_factor=args.smooth_factor)
                 # update the previous landmarks
                 prev_landmarks = landmarks
 

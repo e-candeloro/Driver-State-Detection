@@ -177,7 +177,7 @@ def main():
 
                 # compute the Gaze Score
                 gaze = Eye_det.get_Gaze_Score(
-                    frame=gray, landmarks=landmarks)
+                    frame=gray, landmarks=landmarks, frame_size=frame_size)
 
                 # compute the head pose
                 frame_det, roll, pitch, yaw = Head_pose.get_pose(

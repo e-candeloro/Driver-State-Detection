@@ -48,8 +48,8 @@ class EyeDetector:
         self.keypoints = landmarks
 
         for n in EYES_LMS_NUMS:
-            x = landmarks[n, 0] * frame_size[0]
-            y = landmarks[n, 1] * frame_size[1]
+            x = int(landmarks[n, 0] * frame_size[0])
+            y = int(landmarks[n, 1] * frame_size[1])
             cv2.circle(color_frame, (x, y), 1, (0, 0, 255), -1)
         return
 
@@ -114,7 +114,7 @@ class EyeDetector:
 
         return ear_avg
 
-    def get_Gaze_Score(self, frame, landmarks):
+    def get_Gaze_Score(self, frame, landmarks, frame_size):
         """
         Computes the average Gaze Score for the eyes
         The Gaze Score is the mean of the l2 norm (euclidean distance) between the center point of the Eye ROI
@@ -140,26 +140,47 @@ class EyeDetector:
         left_iris = landmarks[LEFT_IRIS_NUM, :2]
         right_iris = landmarks[RIGHT_IRIS_NUM, :2]
 
-        left_eye_center = landmarks[]
+        left_eye_x_min = landmarks[EYES_LMS_NUMS[:6], 0].min()
+        left_eye_y_min = landmarks[EYES_LMS_NUMS[:6], 1].min()
+        left_eye_x_max = landmarks[EYES_LMS_NUMS[:6], 0].max()
+        left_eye_y_max = landmarks[EYES_LMS_NUMS[:6], 1].max()
 
-        gaze_score = LA.norm(
-            pupil_position - eye_center) / eye_center[0]
-        # computes the L2 distance between the eye_center and the pupil position
-
-        # computes the gaze scores for the eyes
+        right_eye_x_min = landmarks[EYES_LMS_NUMS[6:], 0].min()
+        right_eye_y_min = landmarks[EYES_LMS_NUMS[6:], 1].min()
+        right_eye_x_max = landmarks[EYES_LMS_NUMS[6:], 0].max()
+        right_eye_y_max = landmarks[EYES_LMS_NUMS[6:], 1].max()
+        
+        left_eye_center = np.array(((left_eye_x_min+left_eye_x_max)/2,
+                                    (left_eye_y_min+left_eye_y_max)/2))
+        right_eye_center = np.array(((right_eye_x_min+right_eye_x_max)/2,
+                                    (right_eye_y_min+right_eye_y_max)/2))
+        
+        left_gaze_score = LA.norm(left_iris - left_eye_center) / left_eye_center[0]
+        right_gaze_score = LA.norm(right_iris - right_eye_center) / right_eye_center[0]
 
         # if show_processing is True, shows the eyes ROI, eye center, pupil center and line distance
+
+        # computes the average gaze score for the 2 eyes
+        avg_gaze_score = (left_gaze_score + right_gaze_score) / 2
+
         if self.show_processing and (left_eye is not None) and (right_eye is not None):
+            left_eye_x_min_frame = int(left_eye_x_min * frame_size[0])
+            left_eye_y_min_frame = int(left_eye_y_min * frame_size[1])
+            left_eye_x_max_frame = int(left_eye_x_max * frame_size[0])
+            left_eye_y_max_frame = int(left_eye_y_max * frame_size[1])
+            right_eye_x_min_frame = int(right_eye_x_min * frame_size[0])
+            right_eye_y_min_frame = int(right_eye_y_min * frame_size[1])
+            right_eye_x_max_frame = int(right_eye_x_max * frame_size[0])
+            right_eye_y_max_frame = int(right_eye_y_max * frame_size[1])
+
+            left_eye = frame[left_eye_y_min_frame:left_eye_y_max_frame,
+                             left_eye_x_min_frame:left_eye_x_max_frame]
+            right_eye = frame[right_eye_y_min_frame:right_eye_y_max_frame,
+                             right_eye_x_min_frame:right_eye_x_max_frame]
+
             left_eye = resize(left_eye, 1000)
             right_eye = resize(right_eye, 1000)
             cv2.imshow("left eye", left_eye)
             cv2.imshow("right eye", right_eye)
-
-        if gaze_eye_left and gaze_eye_right:
-
-            # computes the average gaze score for the 2 eyes
-            avg_gaze_score = (gaze_eye_left + gaze_eye_left) / 2
-            return avg_gaze_score
-
-        else:
-            return None
+        
+        return avg_gaze_score

@@ -88,10 +88,9 @@ class HeadPoseEstimator:
         model_lms_ids.sort()
         self.model_lms_ids = model_lms_ids
 
-        NOSE_AXES_POINTS = np.array([
-            [7, 0, 10],
-            [0, 7, 6],
-            [0, 0, 14]], dtype=float)
+        self.NOSE_AXES_POINTS = np.array([[7, 0, 10],
+                                          [0, 7, 6],
+                                          [0, 0, 14]], dtype=float)
 
 
     def get_pose(self, frame, landmarks, frame_size, prev_landmarks=None, smoothing_factor=0.5):
@@ -118,7 +117,7 @@ class HeadPoseEstimator:
         eulers = None
         metric_lms = None
 
-        if not self.pcf_calculaged:
+        if not self.pcf_calculated:
             fr_w = frame_size[0]
             fr_h = frame_size[1]
             if self.camera_matrix is None:
@@ -129,8 +128,8 @@ class HeadPoseEstimator:
                     [0, focal_length, fr_center[1]],
                     [0, 0, 1]], dtype="double")
                 self.focal_length = focal_length
-            if self.DIST_COEFFS is None:
-                self.DIST_COEFFS = np.zeros((5, 1))
+            if self.dist_coeffs is None:
+                self.dist_coeffs = np.zeros((5, 1))
 
             self.pcf = PCF(
                 frame_height=fr_h,

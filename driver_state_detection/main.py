@@ -45,10 +45,6 @@ def main():
     parser.add_argument('-c', '--camera', type=int,
                         default=0, metavar='', help='Camera number, default is 0 (webcam)')
 
-    # selection of fps limit for computing time between frames
-    parser.add_argument('-F', '--fps_limit', type=int, default=20, metavar='',
-                        help='FPS limit, default is 11 (WARNING: if this surpasses the fps max rate reachable by your device, it will cause problems for the scores computation')
-
     # TODO: add option for choose if use camera matrix and dist coeffs
 
     # visualisation parameters

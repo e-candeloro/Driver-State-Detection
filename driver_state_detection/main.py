@@ -70,10 +70,10 @@ def main():
                         metavar='', help='Sets the EAR threshold for the Attention Scorer, default is 0.15')
     parser.add_argument('--ear_time_thresh', type=float, default=2,
                         metavar='', help='Sets the EAR time (seconds) threshold for the Attention Scorer, default is 2 seconds')
-    parser.add_argument('--gaze_thresh', type=float, default=0.2,
+    parser.add_argument('--gaze_thresh', type=float, default=0.015,
                         metavar='', help='Sets the Gaze Score threshold for the Attention Scorer, default is 0.2')
     parser.add_argument('--gaze_time_thresh', type=float, default=2, metavar='',
-                        help='Sets the Gaze Score time (seconds) threshold for the Attention Scorer, default is 2 seconds')
+                        help='Sets the Gaze Score time (seconds) threshold for the Attention Scorer, default is 2. seconds')
     parser.add_argument('--pitch_thresh', type=float, default=20,
                         metavar='', help='Sets the PITCH threshold (degrees) for the Attention Scorer, default is 30 degrees')
     parser.add_argument('--yaw_thresh', type=float, default=20,
@@ -96,16 +96,6 @@ def main():
             print(
                 "OpenCV optimization could not be set to True, the script may be slower than expected")
 
-    ctime = 0  # current time (used to compute FPS)
-    ptime = 0  # past time (used to compute FPS)
-    prev_time = 0  # previous time variable, used to set the FPS limit
-    # FPS upper limit value, needed for estimating the time for each frame and increasing performances
-    fps_lim = args.fps_limit
-    time_lim = 1. / fps_lim  # time window for each frame taken by the webcam
-
-    # previous landmarks for head pose estimation (initially set to None) (used for smoothing)
-    prev_landmarks = None
-
     """instantiation of mediapipe face mesh model. This model give back 478 landmarks
     if the rifine_landmarks parameter is set to True. 468 landmarks for the face and
     the last 10 landmarks for the irises
@@ -122,9 +112,12 @@ def main():
 
     # instantiation of the attention scorer object, with the various thresholds
     # NOTE: set verbose to True for additional printed information about the scores
-    Scorer = AttScorer(fps_lim, ear_thresh=args.ear_thresh, ear_time_thresh=args.ear_time_thresh, gaze_thresh=args.gaze_thresh,
-                       gaze_time_thresh=args.gaze_time_thresh, pitch_thresh=args.pitch_thresh, yaw_thresh=args.yaw_thresh,
-                       roll_thresh=args.roll_thresh, pose_time_thresh=args.pose_time_thresh, verbose=args.verbose)
+    t0 = time.perf_counter()
+    Scorer = AttScorer(t_now=t0, ear_thresh=args.ear_thresh, gaze_time_thresh=args.gaze_time_thresh,
+                       roll_thresh=args.roll_thresh, pitch_thresh=args.pitch_thresh,
+                       yaw_thresh=args.yaw_thresh, ear_time_thresh=args.ear_time_thresh,
+                       gaze_thresh=args.gaze_thresh, pose_time_thresh=args.pose_time_thresh,
+                       verbose=args.verbose)
 
     # capture the input from the default system camera (camera number 0)
     cap = cv2.VideoCapture(args.camera)
@@ -132,9 +125,14 @@ def main():
         print("Cannot open camera")
         exit()
 
+    i = 0
+    time.sleep(0.01) # To prevent zero division error when calculating the FPS
     while True:  # infinite loop for webcam video capture
+        t_now = time.perf_counter()
+        fps = i / (t_now - t0)
+        if fps == 0:
+            fps = 10
 
-        delta_time = time.perf_counter() - prev_time  # delta time for FPS capping
         ret, frame = cap.read()  # read a frame from the webcam
 
         if not ret:  # if a frame can't be read, exit the program
@@ -145,124 +143,118 @@ def main():
         if args.camera == 0:
             frame = cv2.flip(frame, 2)
 
-        if delta_time >= time_lim:  # if the time passed is bigger or equal than the frame time, process the frame
-            prev_time = time.perf_counter()
+        # start the tick counter for computing the processing time for each frame
+        e1 = cv2.getTickCount()
 
-            # compute the actual frame rate per second (FPS) of the webcam video capture stream, and show it
-            ctime = time.perf_counter()
-            fps = 1.0 / float(ctime - ptime)
-            ptime = ctime
+        # transform the BGR frame in grayscale
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-            # start the tick counter for computing the processing time for each frame
-            e1 = cv2.getTickCount()
+        # get the frame size
+        frame_size = frame.shape[1], frame.shape[0]
 
-            # transform the BGR frame in grayscale
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # apply a bilateral filter to lower noise but keep frame details. create a 3D matrix from gray image to give it to the model
+        gray = np.expand_dims(cv2.bilateralFilter(gray, 5, 10, 10), axis=2)
+        gray = np.concatenate([gray, gray, gray], axis=2)
 
-            # get the frame size
-            frame_size = frame.shape[1], frame.shape[0]
+        # find the faces using the face mesh model
+        lms = detector.process(gray).multi_face_landmarks
 
-            # apply a bilateral filter to lower noise but keep frame details. create a 3D matrix from gray image to give it to the model
-            gray = np.expand_dims(cv2.bilateralFilter(gray, 5, 10, 10), axis=2)
-            gray = np.concatenate([gray, gray, gray], axis=2)
+        if lms:  # process the frame only if at least a face is found
+            # getting face landmarks and then take only the bounding box of the biggest face
+            landmarks = _get_landmarks(lms)
 
-            # find the faces using the face mesh model
-            lms = detector.process(gray).multi_face_landmarks
+            # shows the eye keypoints (can be commented)
+            Eye_det.show_eye_keypoints(
+                color_frame=frame, landmarks=landmarks, frame_size=frame_size)
 
-            if lms:  # process the frame only if at least a face is found
-                # getting face landmarks and then take only the bounding box of the biggest face
-                landmarks = _get_landmarks(lms)
+            # compute the EAR score of the eyes
+            ear = Eye_det.get_EAR(frame=gray, landmarks=landmarks)
 
-                # shows the eye keypoints (can be commented)
-                Eye_det.show_eye_keypoints(
-                    color_frame=frame, landmarks=landmarks, frame_size=frame_size)
+            # compute the PERCLOS score and state of tiredness
+            tired, perclos_score = Scorer.get_PERCLOS(t_now, fps, ear)
 
-                # compute the EAR score of the eyes
-                ear = Eye_det.get_EAR(frame=gray, landmarks=landmarks)
+            # compute the Gaze Score
+            gaze = Eye_det.get_Gaze_Score(
+                frame=gray, landmarks=landmarks, frame_size=frame_size)
 
-                # compute the PERCLOS score and state of tiredness
-                tired, perclos_score = Scorer.get_PERCLOS(ear)
+            # compute the head pose
+            frame_det, roll, pitch, yaw = Head_pose.get_pose(
+                frame=frame, landmarks=landmarks, frame_size=frame_size)
+            
+             # evaluate the scores for EAR, GAZE and HEAD POSE
+            asleep, looking_away, distracted = Scorer.eval_scores(t_now=t_now,
+                                                                  ear_score=ear,
+                                                                  gaze_score=gaze,
+                                                                  head_roll=roll,
+                                                                  head_pitch=pitch,
+                                                                  head_yaw=yaw)
 
-                # compute the Gaze Score
-                gaze = Eye_det.get_Gaze_Score(
-                    frame=gray, landmarks=landmarks, frame_size=frame_size)
+            # if the head pose estimation is successful, show the results
+            if frame_det is not None:
+                frame = frame_det
 
-                # compute the head pose
-                frame_det, roll, pitch, yaw = Head_pose.get_pose(
-                    frame=frame, landmarks=landmarks, frame_size=frame_size)
-
-                # if the head pose estimation is successful, show the results
-                if frame_det is not None:
-                    frame = frame_det
-
-                # show the real-time EAR score
-                if ear is not None:
-                    cv2.putText(frame, "EAR:" + str(round(ear, 3)), (10, 50),
-                                cv2.FONT_HERSHEY_PLAIN, 2, (255, 255, 255), 1, cv2.LINE_AA)
-
-                # show the real-time Gaze Score
-                if gaze is not None:
-                    cv2.putText(frame, "Gaze Score:" + str(round(gaze, 3)), (10, 80),
-                                cv2.FONT_HERSHEY_PLAIN, 2, (255, 255, 255), 1, cv2.LINE_AA)
-
-                # show the real-time PERCLOS score
-                cv2.putText(frame, "PERCLOS:" + str(round(perclos_score, 3)), (10, 110),
+            # show the real-time EAR score
+            if ear is not None:
+                cv2.putText(frame, "EAR:" + str(round(ear, 3)), (10, 50),
                             cv2.FONT_HERSHEY_PLAIN, 2, (255, 255, 255), 1, cv2.LINE_AA)
-                
-                if roll is not None:
-                    cv2.putText(frame, "roll:"+str(roll.round(1)[0]), (500, 40),
-                                cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 255), 1, cv2.LINE_AA)
-                if pitch is not None:
-                    cv2.putText(frame, "pitch:"+str(pitch.round(1)[0]), (500, 70),
-                                cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 255), 1, cv2.LINE_AA)
-                if yaw is not None:
-                    cv2.putText(frame, "yaw:"+str(yaw.round(1)[0]), (500, 100),
-                                cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 255), 1, cv2.LINE_AA)
-                
 
-                # if the driver is tired, show and alert on screen
-                if tired:
-                    cv2.putText(frame, "TIRED!", (10, 280),
-                                cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 255), 1, cv2.LINE_AA)
+            # show the real-time Gaze Score
+            if gaze is not None:
+                cv2.putText(frame, "Gaze Score:" + str(round(gaze, 3)), (10, 80),
+                            cv2.FONT_HERSHEY_PLAIN, 2, (255, 255, 255), 1, cv2.LINE_AA)
 
-                # evaluate the scores for EAR, GAZE and HEAD POSE
-                asleep, looking_away, distracted = Scorer.eval_scores(ear_score=ear,
-                                                                      gaze_score=gaze,
-                                                                      head_roll=roll,
-                                                                      head_pitch=pitch,
-                                                                      head_yaw=yaw,
-                                                                      )
+            # show the real-time PERCLOS score
+            cv2.putText(frame, "PERCLOS:" + str(round(perclos_score, 3)), (10, 110),
+                        cv2.FONT_HERSHEY_PLAIN, 2, (255, 255, 255), 1, cv2.LINE_AA)
+            
+            if roll is not None:
+                cv2.putText(frame, "roll:"+str(roll.round(1)[0]), (500, 40),
+                            cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 255), 1, cv2.LINE_AA)
+            if pitch is not None:
+                cv2.putText(frame, "pitch:"+str(pitch.round(1)[0]), (500, 70),
+                            cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 255), 1, cv2.LINE_AA)
+            if yaw is not None:
+                cv2.putText(frame, "yaw:"+str(yaw.round(1)[0]), (500, 100),
+                            cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 255), 1, cv2.LINE_AA)
+            
 
-                # if the state of attention of the driver is not normal, show an alert on screen
-                if asleep:
-                    cv2.putText(frame, "ASLEEP!", (10, 300),
-                                cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 255), 1, cv2.LINE_AA)
-                if looking_away:
-                    cv2.putText(frame, "LOOKING AWAY!", (10, 320),
-                                cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 255), 1, cv2.LINE_AA)
-                if distracted:
-                    cv2.putText(frame, "DISTRACTED!", (10, 340),
-                                cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 255), 1, cv2.LINE_AA)
+            # if the driver is tired, show and alert on screen
+            if tired:
+                cv2.putText(frame, "TIRED!", (10, 280),
+                            cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 255), 1, cv2.LINE_AA)
 
-            # stop the tick counter for computing the processing time for each frame
-            e2 = cv2.getTickCount()
-            # processign time in milliseconds
-            proc_time_frame_ms = ((e2 - e1) / cv2.getTickFrequency()) * 1000
-            # print fps and processing time per frame on screen
-            if args.show_fps:
-                cv2.putText(frame, "FPS:" + str(round(fps, 0)), (10, 400), cv2.FONT_HERSHEY_PLAIN, 2,
-                            (255, 0, 255), 1)
-            if args.show_proc_time:
-                cv2.putText(frame, "PROC. TIME FRAME:" + str(round(proc_time_frame_ms, 0)) + 'ms', (10, 430), cv2.FONT_HERSHEY_PLAIN, 2,
-                            (255, 0, 255), 1)
+            # if the state of attention of the driver is not normal, show an alert on screen
+            if asleep:
+                cv2.putText(frame, "ASLEEP!", (10, 300),
+                            cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 255), 1, cv2.LINE_AA)
+            if looking_away:
+                cv2.putText(frame, "LOOKING AWAY!", (10, 320),
+                            cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 255), 1, cv2.LINE_AA)
+            if distracted:
+                cv2.putText(frame, "DISTRACTED!", (10, 340),
+                            cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 255), 1, cv2.LINE_AA)
 
-            # show the frame on screen
-            cv2.imshow("Press 'q' to terminate", frame)
+        # stop the tick counter for computing the processing time for each frame
+        e2 = cv2.getTickCount()
+        # processign time in milliseconds
+        proc_time_frame_ms = ((e2 - e1) / cv2.getTickFrequency()) * 1000
+        # print fps and processing time per frame on screen
+        if args.show_fps:
+            cv2.putText(frame, "FPS:" + str(round(fps)), (10, 400), cv2.FONT_HERSHEY_PLAIN, 2,
+                        (255, 0, 255), 1)
+        if args.show_proc_time:
+            cv2.putText(frame, "PROC. TIME FRAME:" + str(round(proc_time_frame_ms, 0)) + 'ms', (10, 430), cv2.FONT_HERSHEY_PLAIN, 2,
+                        (255, 0, 255), 1)
+
+        # show the frame on screen
+        cv2.imshow("Press 'q' to terminate", frame)
 
         # if the key "q" is pressed on the keyboard, the program is terminated
         if cv2.waitKey(20) & 0xFF == ord('q'):
             break
-
+        
+        i += 1
+    
     cap.release()
     cv2.destroyAllWindows()
 

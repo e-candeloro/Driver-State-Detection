@@ -151,7 +151,7 @@ class EyeDetector:
         frame: numpy array
             Frame/image in which the eyes keypoints are found
         landmarks: numpy array
-            List of 68 dlib keypoints of the face
+            List of 478 face mesh keypoints of the face
 
         Returns
         -------- 

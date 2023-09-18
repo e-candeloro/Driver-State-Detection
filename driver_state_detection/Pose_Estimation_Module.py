@@ -108,8 +108,8 @@ class HeadPoseEstimator:
         ----------
         frame: numpy array
             Image/frame captured by the camera
-        landmarks: dlib.rectangle
-            Dlib detected 68 landmarks of the head
+        landmarks: numpy array
+            mediapiep face mesh detected 478 landmarks of the head
 
         Returns
         --------

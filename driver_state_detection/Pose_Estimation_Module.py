@@ -5,6 +5,9 @@ from face_geometry import *
 from Utils import rotationMatrixToEulerAngles, draw_pose_info
 
 
+JAW_LMS_NUMS = [61, 291, 199]
+
+
 def _rmat2euler(rmat):
     """
     This function converts a rotation matrix into Euler angles. It first checks if the given matrix is a valid
@@ -61,7 +64,7 @@ class HeadPoseEstimator:
     def __init__(self, camera_matrix=None, dist_coeffs=None, show_axis: bool = False):
         """
         Head Pose estimator class that contains the get_pose method for computing the three euler angles
-        (roll, pitch, yaw) of the head. It uses the image/frame, the dlib detected landmarks of the head and,
+        (roll, pitch, yaw) of the head. It uses the image/frame, the face mesh detected landmarks of the head and,
         optionally the camera parameters
 
         Parameters
@@ -81,19 +84,23 @@ class HeadPoseEstimator:
         self.focal_length = None
 
         self.pcf_calculated = False
-
-        JAW_LMS_NUMS = [61, 291, 199]
-        model_lms_ids = JAW_LMS_NUMS + [
-            key for key, _ in procrustes_landmark_basis]
-        model_lms_ids.sort()
-        self.model_lms_ids = model_lms_ids
+        
+        self.model_lms_ids = self._get_model_lms_ids()
 
         self.NOSE_AXES_POINTS = np.array([[7, 0, 10],
                                           [0, 7, 6],
                                           [0, 0, 14]], dtype=float)
+    
+    @staticmethod
+    def _get_model_lms_ids():
+        model_lms_ids = JAW_LMS_NUMS + [
+            key for key, _ in procrustes_landmark_basis]
+        model_lms_ids.sort()
+
+        return model_lms_ids
 
 
-    def get_pose(self, frame, landmarks, frame_size, prev_landmarks=None, smoothing_factor=0.5):
+    def get_pose(self, frame, landmarks, frame_size):
         """
         Estimate head pose using the head pose estimator object instantiated attribute
 
@@ -118,25 +125,7 @@ class HeadPoseEstimator:
         metric_lms = None
 
         if not self.pcf_calculated:
-            fr_w = frame_size[0]
-            fr_h = frame_size[1]
-            if self.camera_matrix is None:
-                fr_center = (fr_w // 2, fr_h // 2)
-                focal_length = fr_w
-                self.camera_matrix = np.array([
-                    [focal_length, 0, fr_center[0]],
-                    [0, focal_length, fr_center[1]],
-                    [0, 0, 1]], dtype="double")
-                self.focal_length = focal_length
-            if self.dist_coeffs is None:
-                self.dist_coeffs = np.zeros((5, 1))
-
-            self.pcf = PCF(
-                frame_height=fr_h,
-                frame_width=fr_w,
-                fy=self.focal_length)
-            
-            self.pcf_calculated = True
+            self._get_camera_parameters(frame_size)
 
         model_img_lms = (
             np.clip(landmarks[self.model_lms_ids, :2], 0., 1.) * frame_size)
@@ -188,23 +177,48 @@ class HeadPoseEstimator:
             euler_angles = -cv2.decomposeProjectionMatrix(P)[6] -> extracting euler angles for yaw pitch and roll from the projection matrix
             """
 
-            (nose_axes_point2D, _) = cv2.projectPoints(
-                self.NOSE_AXES_POINTS,
-                rvec,
-                tvec,
-                self.camera_matrix,
-                self.dist_coeffs)
-            nose = tuple(model_img_lms[0, :2].astype(int))
-
-            nose_x = tuple(nose_axes_point2D[0, 0].astype(int))
-            nose_y = tuple(nose_axes_point2D[1, 0].astype(int))
-            nose_z = tuple(nose_axes_point2D[2, 0].astype(int))
-
-            cv2.line(frame, nose, nose_x, (255, 0, 0), 2)
-            cv2.line(frame, nose, nose_y, (0, 255, 0), 2)
-            cv2.line(frame, nose, nose_z, (0, 0, 255), 2)
-
+            self._draw_nose_axes(frame, rvec, tvec, model_img_lms)            
+            
             return frame, eulers[0], eulers[1], eulers[2]
 
         else:
             return None, None, None, None
+    
+    def _draw_nose_axes(self, frame, rvec, tvec, model_img_lms):
+        (nose_axes_point2D, _) = cv2.projectPoints(
+            self.NOSE_AXES_POINTS,
+            rvec,
+            tvec,
+            self.camera_matrix,
+            self.dist_coeffs)
+        nose = tuple(model_img_lms[0, :2].astype(int))
+
+        nose_x = tuple(nose_axes_point2D[0, 0].astype(int))
+        nose_y = tuple(nose_axes_point2D[1, 0].astype(int))
+        nose_z = tuple(nose_axes_point2D[2, 0].astype(int))
+
+        cv2.line(frame, nose, nose_x, (255, 0, 0), 2)
+        cv2.line(frame, nose, nose_y, (0, 255, 0), 2)
+        cv2.line(frame, nose, nose_z, (0, 0, 255), 2)
+
+
+    def _get_camera_parameters(self, frame_size):
+        fr_w = frame_size[0]
+        fr_h = frame_size[1]
+        if self.camera_matrix is None:
+            fr_center = (fr_w // 2, fr_h // 2)
+            focal_length = fr_w
+            self.camera_matrix = np.array([
+                [focal_length, 0, fr_center[0]],
+                [0, focal_length, fr_center[1]],
+                [0, 0, 1]], dtype="double")
+            self.focal_length = focal_length
+        if self.dist_coeffs is None:
+            self.dist_coeffs = np.zeros((5, 1))
+
+        self.pcf = PCF(
+            frame_height=fr_h,
+            frame_width=fr_w,
+            fy=self.focal_length)
+        
+        self.pcf_calculated = True

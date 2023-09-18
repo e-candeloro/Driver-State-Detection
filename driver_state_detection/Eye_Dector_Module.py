@@ -32,6 +32,22 @@ class EyeDetector:
         self.show_processing = show_processing
         self.eye_width = None
 
+    @staticmethod
+    def _calc_EAR_eye(eye_pts):
+        """
+        Computer the EAR score for a single eyes given it's keypoints
+        :param eye_pts: numpy array of shape (6,2) containing the keypoints of an eye
+        :return: ear_eye
+            EAR of the eye
+        """
+        ear_eye = (LA.norm(eye_pts[2] - eye_pts[3]) + LA.norm(
+            eye_pts[4] - eye_pts[5])) / (2 * LA.norm(eye_pts[0] - eye_pts[1]))
+        '''
+        EAR is computed as the mean of two measures of eye opening (see mediapipe face keypoints for the eye)
+        divided by the eye lenght
+        '''
+        return ear_eye
+    
     def show_eye_keypoints(self, color_frame, landmarks, frame_size):
         """
         Shows eyes keypoints found in the face, drawing red circles in their position in the frame/image
@@ -40,12 +56,17 @@ class EyeDetector:
         ----------
         color_frame: numpy array
             Frame/image in which the eyes keypoints are found
-        landmarks: list
-            List of 68 dlib keypoints of the face
+        landmarks: landmarks: numpy array
+            List of 478 mediapipe keypoints of the face
         """
 
     
         self.keypoints = landmarks
+
+        cv2.circle(color_frame, (landmarks[LEFT_IRIS_NUM, :2] * frame_size).astype(np.uint32),
+                   3, (255, 255, 255), cv2.FILLED)
+        cv2.circle(color_frame, (landmarks[RIGHT_IRIS_NUM, :2] * frame_size).astype(np.uint32),
+                   3, (255, 255, 255), cv2.FILLED)
 
         for n in EYES_LMS_NUMS:
             x = int(landmarks[n, 0] * frame_size[0])
@@ -61,8 +82,8 @@ class EyeDetector:
         ----------
         frame: numpy array
             Frame/image in which the eyes keypoints are found
-        landmarks: list
-            List of 68 dlib keypoints of the face
+        landmarks: landmarks: numpy array
+            List of 478 mediapipe keypoints of the face
 
         Returns
         -------- 
@@ -74,45 +95,50 @@ class EyeDetector:
 
         self.keypoints = landmarks
         self.frame = frame
-        pts = self.keypoints
 
-        i = 0  # auxiliary counter
-        # numpy array for storing the keypoints positions of the left eye
+        # numpy array for storing the keypoints positions of the left and right eyes
         eye_pts_l = np.zeros(shape=(6, 2))
-        # numpy array for storing the keypoints positions of the right eye
-        eye_pts_r = np.zeros(shape=(6, 2))
+        eye_pts_r = eye_pts_l.copy()
 
-        for i in range(len(EYES_LMS_NUMS)//2):  # the dlib keypoints from 36 to 42 are referring to the left eye
-            point_l = landmarks[EYES_LMS_NUMS[i]]
-            point_r = landmarks[EYES_LMS_NUMS[i+6]]
-
+        # get the face mesh keypoints
+        for i in range(len(EYES_LMS_NUMS)//2):
             # array of x,y coordinates for the left eye reference point
-            eye_pts_l[i] = [point_l[0], point_l[1]]
+            eye_pts_l[i] = landmarks[EYES_LMS_NUMS[i], :2]
             # array of x,y coordinates for the right eye reference point
-            eye_pts_r[i] = [point_r[0], point_r[1]]
+            eye_pts_r[i] = landmarks[EYES_LMS_NUMS[i+6], :2]
 
-        def EAR_eye(eye_pts):
-            """
-            Computer the EAR score for a single eyes given it's keypoints
-            :param eye_pts: numpy array of shape (6,2) containing the keypoints of an eye considering the dlib ordering
-            :return: ear_eye
-                EAR of the eye
-            """
-            ear_eye = (LA.norm(eye_pts[2] - eye_pts[3]) + LA.norm(
-                eye_pts[4] - eye_pts[5])) / (2 * LA.norm(eye_pts[0] - eye_pts[1]))
-            '''
-            EAR is computed as the mean of two measures of eye opening (see dlib face keypoints for the eye)
-            divided by the eye lenght
-            '''
-            return ear_eye
-
-        ear_left = EAR_eye(eye_pts_l)  # computing the left eye EAR score
-        ear_right = EAR_eye(eye_pts_r)  # computing the right eye EAR score
+        ear_left = self._calc_EAR_eye(eye_pts_l)  # computing the left eye EAR score
+        ear_right = self._calc_EAR_eye(eye_pts_r)  # computing the right eye EAR score
 
         # computing the average EAR score
         ear_avg = (ear_left + ear_right) / 2
 
         return ear_avg
+    
+    @staticmethod
+    def _calc_1eye_score(landmarks, eye_lms_nums, eye_iris_num, frame_size, frame):
+        """Gets each eye score and its picture."""
+        iris = landmarks[eye_iris_num, :2]
+
+        eye_x_min = landmarks[eye_lms_nums, 0].min()
+        eye_y_min = landmarks[eye_lms_nums, 1].min()
+        eye_x_max = landmarks[eye_lms_nums, 0].max()
+        eye_y_max = landmarks[eye_lms_nums, 1].max()
+        
+        eye_center = np.array(((eye_x_min+eye_x_max)/2,
+                                    (eye_y_min+eye_y_max)/2))
+        
+        eye_gaze_score = LA.norm(iris - eye_center) / eye_center[0]
+        
+        eye_x_min_frame = int(eye_x_min * frame_size[0])
+        eye_y_min_frame = int(eye_y_min * frame_size[1])
+        eye_x_max_frame = int(eye_x_max * frame_size[0])
+        eye_y_max_frame = int(eye_y_max * frame_size[1])
+
+        eye = frame[eye_y_min_frame:eye_y_max_frame,
+                            eye_x_min_frame:eye_x_max_frame]
+
+        return eye_gaze_score, eye
 
     def get_Gaze_Score(self, frame, landmarks, frame_size):
         """
@@ -124,7 +150,7 @@ class EyeDetector:
         ----------
         frame: numpy array
             Frame/image in which the eyes keypoints are found
-        landmarks: list
+        landmarks: numpy array
             List of 68 dlib keypoints of the face
 
         Returns
@@ -137,26 +163,10 @@ class EyeDetector:
         self.keypoints = landmarks
         self.frame = frame
 
-        left_iris = landmarks[LEFT_IRIS_NUM, :2]
-        right_iris = landmarks[RIGHT_IRIS_NUM, :2]
-
-        left_eye_x_min = landmarks[EYES_LMS_NUMS[:6], 0].min()
-        left_eye_y_min = landmarks[EYES_LMS_NUMS[:6], 1].min()
-        left_eye_x_max = landmarks[EYES_LMS_NUMS[:6], 0].max()
-        left_eye_y_max = landmarks[EYES_LMS_NUMS[:6], 1].max()
-
-        right_eye_x_min = landmarks[EYES_LMS_NUMS[6:], 0].min()
-        right_eye_y_min = landmarks[EYES_LMS_NUMS[6:], 1].min()
-        right_eye_x_max = landmarks[EYES_LMS_NUMS[6:], 0].max()
-        right_eye_y_max = landmarks[EYES_LMS_NUMS[6:], 1].max()
-        
-        left_eye_center = np.array(((left_eye_x_min+left_eye_x_max)/2,
-                                    (left_eye_y_min+left_eye_y_max)/2))
-        right_eye_center = np.array(((right_eye_x_min+right_eye_x_max)/2,
-                                    (right_eye_y_min+right_eye_y_max)/2))
-        
-        left_gaze_score = LA.norm(left_iris - left_eye_center) / left_eye_center[0]
-        right_gaze_score = LA.norm(right_iris - right_eye_center) / right_eye_center[0]
+        left_gaze_score, left_eye = self._calc_1eye_score(
+            landmarks, EYES_LMS_NUMS[:6], LEFT_IRIS_NUM, frame_size, frame)
+        right_gaze_score, right_eye = self._calc_1eye_score(
+            landmarks, EYES_LMS_NUMS[6:], RIGHT_IRIS_NUM, frame_size, frame)
 
         # if show_processing is True, shows the eyes ROI, eye center, pupil center and line distance
 
@@ -164,20 +174,6 @@ class EyeDetector:
         avg_gaze_score = (left_gaze_score + right_gaze_score) / 2
 
         if self.show_processing and (left_eye is not None) and (right_eye is not None):
-            left_eye_x_min_frame = int(left_eye_x_min * frame_size[0])
-            left_eye_y_min_frame = int(left_eye_y_min * frame_size[1])
-            left_eye_x_max_frame = int(left_eye_x_max * frame_size[0])
-            left_eye_y_max_frame = int(left_eye_y_max * frame_size[1])
-            right_eye_x_min_frame = int(right_eye_x_min * frame_size[0])
-            right_eye_y_min_frame = int(right_eye_y_min * frame_size[1])
-            right_eye_x_max_frame = int(right_eye_x_max * frame_size[0])
-            right_eye_y_max_frame = int(right_eye_y_max * frame_size[1])
-
-            left_eye = frame[left_eye_y_min_frame:left_eye_y_max_frame,
-                             left_eye_x_min_frame:left_eye_x_max_frame]
-            right_eye = frame[right_eye_y_min_frame:right_eye_y_max_frame,
-                             right_eye_x_min_frame:right_eye_x_max_frame]
-
             left_eye = resize(left_eye, 1000)
             right_eye = resize(right_eye, 1000)
             cv2.imshow("left eye", left_eye)

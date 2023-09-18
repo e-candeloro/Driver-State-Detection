@@ -2,7 +2,6 @@ import time
 import argparse
 
 import cv2
-import dlib
 import numpy as np
 import mediapipe as mp
 
@@ -21,6 +20,22 @@ camera_matrix = np.array(
 dist_coeffs = np.array(
     [[-0.03792548, 0.09233237, 0.00419088, 0.00317323, -0.15804257]], dtype="double")
 
+def _get_landmarks(lms):
+    surface = 0
+    for lms0 in lms:
+        landmarks = [np.array([point.x, point.y, point.z]) \
+                        for point in lms0.landmark]
+
+        landmarks = np.array(landmarks)
+
+        dx = landmarks[:, 0].max() - landmarks[:, 0].min()
+        dy = landmarks[:, 1].max() - landmarks[:, 1].min()
+        new_surface = dx * dy
+        if new_surface > surface:
+            biggest_face = landmarks
+    
+    return biggest_face
+
 
 def main():
 
@@ -31,7 +46,7 @@ def main():
                         default=0, metavar='', help='Camera number, default is 0 (webcam)')
 
     # selection of fps limit for computing time between frames
-    parser.add_argument('-F', '--fps_limit', type=int, default=11, metavar='',
+    parser.add_argument('-F', '--fps_limit', type=int, default=20, metavar='',
                         help='FPS limit, default is 11 (WARNING: if this surpasses the fps max rate reachable by your device, it will cause problems for the scores computation')
 
     # TODO: add option for choose if use camera matrix and dist coeffs
@@ -51,21 +66,21 @@ def main():
     # Attention Scorer parameters (EAR, Gaze Score, Pose)
     parser.add_argument('--smooth_factor', type=float, default=0.5,
                         metavar='', help='Sets the smooth factor for the head pose estimation keypoint smoothing, default is 0.5')
-    parser.add_argument('--ear_tresh', type=float, default=0.15,
+    parser.add_argument('--ear_thresh', type=float, default=0.15,
                         metavar='', help='Sets the EAR threshold for the Attention Scorer, default is 0.15')
-    parser.add_argument('--ear_time_tresh', type=float, default=2,
+    parser.add_argument('--ear_time_thresh', type=float, default=2,
                         metavar='', help='Sets the EAR time (seconds) threshold for the Attention Scorer, default is 2 seconds')
-    parser.add_argument('--gaze_tresh', type=float, default=0.2,
+    parser.add_argument('--gaze_thresh', type=float, default=0.2,
                         metavar='', help='Sets the Gaze Score threshold for the Attention Scorer, default is 0.2')
-    parser.add_argument('--gaze_time_tresh', type=float, default=2, metavar='',
+    parser.add_argument('--gaze_time_thresh', type=float, default=2, metavar='',
                         help='Sets the Gaze Score time (seconds) threshold for the Attention Scorer, default is 2 seconds')
-    parser.add_argument('--pitch_tresh', type=float, default=30,
+    parser.add_argument('--pitch_thresh', type=float, default=20,
                         metavar='', help='Sets the PITCH threshold (degrees) for the Attention Scorer, default is 30 degrees')
-    parser.add_argument('--yaw_tresh', type=float, default=20,
+    parser.add_argument('--yaw_thresh', type=float, default=20,
                         metavar='', help='Sets the YAW threshold (degrees) for the Attention Scorer, default is 20 degrees')
-    parser.add_argument('--roll_tresh', type=float, default=30,
+    parser.add_argument('--roll_thresh', type=float, default=20,
                         metavar='', help='Sets the ROLL threshold (degrees) for the Attention Scorer, default is 30 degrees')
-    parser.add_argument('--pose_time_tresh', type=float, default=2.5,
+    parser.add_argument('--pose_time_thresh', type=float, default=2.5,
                         metavar='', help='Sets the Pose time threshold (seconds) for the Attention Scorer, default is 2.5 seconds')
 
     # parse the arguments and store them in the args variable dictionary
@@ -91,11 +106,14 @@ def main():
     # previous landmarks for head pose estimation (initially set to None) (used for smoothing)
     prev_landmarks = None
 
-    # instantiation of the dlib face detector object
+    """instantiation of mediapipe face mesh model. This model give back 478 landmarks
+    if the rifine_landmarks parameter is set to True. 468 landmarks for the face and
+    the last 10 landmarks for the irises
+    """
     detector = mp.solutions.face_mesh.FaceMesh(static_image_mode=False,
-                                            min_detection_confidence=0.5,
-                                            min_tracking_confidence=0.5,
-                                            refine_landmarks=True)
+                                               min_detection_confidence=0.5,
+                                               min_tracking_confidence=0.5,
+                                               refine_landmarks=True)
 
     # instantiation of the eye detector and pose estimator objects
     Eye_det = EyeDet(show_processing=args.show_eye_proc)
@@ -104,9 +122,9 @@ def main():
 
     # instantiation of the attention scorer object, with the various thresholds
     # NOTE: set verbose to True for additional printed information about the scores
-    Scorer = AttScorer(fps_lim, ear_tresh=args.ear_tresh, ear_time_tresh=args.ear_time_tresh, gaze_tresh=args.gaze_tresh,
-                       gaze_time_tresh=args.gaze_time_tresh, pitch_tresh=args.pitch_tresh, yaw_tresh=args.yaw_tresh,
-                       roll_tresh=args.roll_tresh, pose_time_tresh=args.pose_time_tresh, verbose=args.verbose)
+    Scorer = AttScorer(fps_lim, ear_thresh=args.ear_thresh, ear_time_thresh=args.ear_time_thresh, gaze_thresh=args.gaze_thresh,
+                       gaze_time_thresh=args.gaze_time_thresh, pitch_thresh=args.pitch_thresh, yaw_thresh=args.yaw_thresh,
+                       roll_thresh=args.roll_thresh, pose_time_thresh=args.pose_time_thresh, verbose=args.verbose)
 
     # capture the input from the default system camera (camera number 0)
     cap = cv2.VideoCapture(args.camera)
@@ -140,30 +158,20 @@ def main():
 
             # transform the BGR frame in grayscale
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+            # get the frame size
             frame_size = frame.shape[1], frame.shape[0]
-            # apply a bilateral filter to lower noise but keep frame details
+
+            # apply a bilateral filter to lower noise but keep frame details. create a 3D matrix from gray image to give it to the model
             gray = np.expand_dims(cv2.bilateralFilter(gray, 5, 10, 10), axis=2)
             gray = np.concatenate([gray, gray, gray], axis=2)
 
-            # find the faces using the dlib face detector
+            # find the faces using the face mesh model
             lms = detector.process(gray).multi_face_landmarks
 
             if lms:  # process the frame only if at least a face is found
-
-                # take only the bounding box of the biggest face
-                surface = 0
-                for lms0 in lms:
-                    landmarks = [np.array([point.x, point.y, point.z]) \
-                                 for point in lms0.landmark]
-
-                    landmarks = np.array(landmarks)
-
-                    dx = landmarks[:, 0].max() - landmarks[:, 0].min()
-                    dy = landmarks[:, 1].max() - landmarks[:, 1].min()
-                    new_surface = dx * dy
-                    if new_surface > surface:
-                        biggest_face = landmarks
-                landmarks = biggest_face
+                # getting face landmarks and then take only the bounding box of the biggest face
+                landmarks = _get_landmarks(lms)
 
                 # shows the eye keypoints (can be commented)
                 Eye_det.show_eye_keypoints(
@@ -181,10 +189,7 @@ def main():
 
                 # compute the head pose
                 frame_det, roll, pitch, yaw = Head_pose.get_pose(
-                    frame=frame, landmarks=landmarks, frame_size=frame_size,
-                    prev_landmarks=prev_landmarks, smoothing_factor=args.smooth_factor)
-                # update the previous landmarks
-                prev_landmarks = landmarks
+                    frame=frame, landmarks=landmarks, frame_size=frame_size)
 
                 # if the head pose estimation is successful, show the results
                 if frame_det is not None:
@@ -203,6 +208,17 @@ def main():
                 # show the real-time PERCLOS score
                 cv2.putText(frame, "PERCLOS:" + str(round(perclos_score, 3)), (10, 110),
                             cv2.FONT_HERSHEY_PLAIN, 2, (255, 255, 255), 1, cv2.LINE_AA)
+                
+                if roll is not None:
+                    cv2.putText(frame, "roll:"+str(roll.round(1)[0]), (500, 40),
+                                cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 255), 1, cv2.LINE_AA)
+                if pitch is not None:
+                    cv2.putText(frame, "pitch:"+str(pitch.round(1)[0]), (500, 70),
+                                cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 255), 1, cv2.LINE_AA)
+                if yaw is not None:
+                    cv2.putText(frame, "yaw:"+str(yaw.round(1)[0]), (500, 100),
+                                cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 255), 1, cv2.LINE_AA)
+                
 
                 # if the driver is tired, show and alert on screen
                 if tired:

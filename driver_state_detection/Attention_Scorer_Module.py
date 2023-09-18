@@ -134,7 +134,7 @@ class AttentionScorer:
         elif ear_score is None or (ear_score is not None and ear_score > self.ear_thresh):
             self.last_time_eye_opened = t_now
             self.closure_time = 0.
-        print(gaze_score, self.gaze_thresh)
+
         if (gaze_score is not None) and (gaze_score > self.gaze_thresh):
             self.not_look_ahead_time = t_now - self.last_time_looked_ahead
         elif gaze_score is None or (gaze_score is not None and gaze_score <= self.gaze_thresh):

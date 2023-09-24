@@ -1,6 +1,6 @@
 # Real Time Driver State Detection
 
-Real time, webcam based, driver attention state detection and monitoring using Python with the OpenCV and Dlib libraries.
+Real time, webcam based, driver attention state detection and monitoring using Python with the OpenCV and mediapipe libraries.
 
 ![driver state detection demo](https://user-images.githubusercontent.com/67196406/173455413-ba95db40-6be5-4d64-9a1d-6c998854130e.gif)
 
@@ -10,7 +10,7 @@ This work is partially based on [this paper](https://www.researchgate.net/public
 
 ## How Does It Work?
 
-This script searches for the driver face, then use the dlib library to predict 68 facial keypoints.
+This script searches for the driver face, then use the mediapipe library to predict 68 facial keypoints.
 The enumeration and location of all the face keypoints/landmarks can be seen [here](https://raw.githubusercontent.com/e-candeloro/Driver-State-Detection/master/predictor/Keypoint%20map%20example.png).
 
 With those keypoints, the following scores are computed:
@@ -35,7 +35,7 @@ https://user-images.githubusercontent.com/67196406/121312501-bb571d00-c905-11eb-
 
 ### EAR
 **Eye Aspect Ratio** is a normalized score that is useful to understand the rate of aperture of the eyes.
-Using the dlib keypoints for each eye (six for each), the eye lenght and width are estimated and using this data the EAR score is computed as explained in the image below:
+Using the mediapipe face mesh keypoints for each eye (six for each), the eye lenght and width are estimated and using this data the EAR score is computed as explained in the image below:
 ![EAR](https://user-images.githubusercontent.com/67196406/121489162-18210900-c9d4-11eb-9d2e-765f5ac42286.png)
 
 **NOTE:** the average of the two eyes EAR score is computed
@@ -69,7 +69,7 @@ https://user-images.githubusercontent.com/67196406/121316446-a1b7d480-c909-11eb-
 The white line is the Euclidean (L2) distance between the black dot (center of the ROI of the eyes) and the white dot (estimated center of the iris/pupil).
 
 ### Head Pose Estimation
-For the head pose estimation, a standard 3d head model in world coordinates was considered, in combination of the respective dlib keypoints in the image plane. 
+For the head pose estimation, a standard 3d head model in world coordinates was considered, in combination of the respective face mesh keypoints in the image plane. 
 In this way, using the solvePnP function of OpenCV, estimating the rotation and translation vector of the head in respect to the camera is possible.
 Then the 3 Euler angles are computed.
 
@@ -82,16 +82,9 @@ This projects runs on Python 3.9 with the following libraries:
 
 - numpy
 - OpenCV (opencv-python)
-- Dlib and cmake
+- mediapipe
 
-The Dlib predictor for face keypoints is already included in the "predictor" folder
-
-### IMPORTANT: Dlib requirements and libraries installation
-
-Dlib is a library that needs a C/C++ compiler installed and also the Cmake library. 
-Please follow [this guide](http://dlib.net/compile.html) to install dlib propely on your machine.
-
-If you have already all the prerequisites in your machine to install dlib and cmake you can use the requirements.txt file provided in the repository using:
+You can use the requirements.txt file provided in the repository using:
     
     pip install -r requirements.txt
     
@@ -100,11 +93,8 @@ Or you can execute the following pip commands on terminal:
 ```
 pip install numpy
 pip install opencv-python
-pip install cmake
-pip install dlib --verbose
+pip install mediapipe
 ```
-
-If you have difficulties installing dlib, it is suggested to use the .whl precompiled package available online.
 
 ## Usage
 First navigate inside the driver state detection folder:
@@ -142,6 +132,5 @@ For any question or if you want to contribute to this project, feel free to cont
 - [ ] Add argparser option for importing and using the camera matrix and dist. coefficients
 - [ ] Reformat classes to follow design patterns and Python conventions
 - [ ] Improve perfomances of the script by minimizing image processing steps
-- [ ] Improve pose estimation using more/all the Dlib predicted face keypoints
 - [ ] Improve robustness of gaze detection
 

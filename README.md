@@ -18,7 +18,9 @@ Thanks to the awesome contribution of [MustafaLotfi](https://github.com/MustafaL
 - Direct iris keypoint detection for gaze score estimation
 - Improved head pose estimation using the dynamical canonical face model
 - Fixed euler angles function and wrong returned values
-- Using time variables to make tthe code more modular and machine agnostic
+- Using time variables to make the code more modular and machine agnostic
+
+**NOTE**: the old mediapipe version can still be found in the "dlib-based" repository branch.
 
 ## How Does It Work?
 

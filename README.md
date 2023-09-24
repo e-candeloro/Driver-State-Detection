@@ -1,12 +1,24 @@
 # Real Time Driver State Detection
+![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)  ![OpenCV](https://img.shields.io/badge/opencv-%23white.svg?style=for-the-badge&logo=opencv&logoColor=white) 
 
 Real time, webcam based, driver attention state detection and monitoring using Python with the OpenCV and mediapipe libraries.
+
 
 ![driver state detection demo](https://user-images.githubusercontent.com/67196406/173455413-ba95db40-6be5-4d64-9a1d-6c998854130e.gif)
 
 
 **Note**:
 This work is partially based on [this paper](https://www.researchgate.net/publication/327942674_Vision-Based_Driver%27s_Attention_Monitoring_System_for_Smart_Vehicles) for the scores and methods used.
+
+## Mediapipe Update
+Thanks to the awesome contribution of [MustafaLotfi](https://github.com/MustafaLotfi), now the script uses the better performing and accurate face keypoints detection model from the [Google Mediapipe library](https://github.com/google/mediapipe).
+
+### Features added:
+- 478 face keypoints detection
+- Direct iris keypoint detection for gaze score estimation
+- Improved head pose estimation using the dynamical canonical face model
+- Fixed euler angles function and wrong returned values
+- Using time variables to make tthe code more modular and machine agnostic
 
 ## How Does It Work?
 
@@ -28,6 +40,9 @@ The driver states can be classified as:
 - **Distracted**: when the head pose score is higher than a certain threshold for a certain amount of time, a warning message is printed on screen
 
 ## Demo
+MEDIAPIPE DEMO COMING SOON
+
+OLD DEMO:
 
 https://user-images.githubusercontent.com/67196406/121312501-bb571d00-c905-11eb-8d25-1cd28efc9110.mp4
 
@@ -50,23 +65,6 @@ The below image explains graphically how the Gaze Score for a single eye is comp
 ![Gaze Score](https://user-images.githubusercontent.com/67196406/121489746-ab5a3e80-c9d4-11eb-8f33-d34afd0947b4.png)
 **NOTE:** the average of the two eyes Gaze Score is computed
 
-**Eye processing for gaze score:**
-
-![Gaze_Score estimation](https://user-images.githubusercontent.com/67196406/121316549-bc8a4900-c909-11eb-80cc-eb18155ce0f8.png)
-
-**Updated version of the processing for computing the gaze score**:
-
-For the first version, an adaptive thresholding was used to aid the Hough transform for detecting the iris position.
-In the updated version,after a Bilateral Filter to remove some noise, only the Hough transform is used and the ROI of the eyes has been reduced in size.
-
-![Gaze_Score estimation v2](https://user-images.githubusercontent.com/67196406/123986317-7daa5900-d9c6-11eb-8860-bd23f8983bdc.png)
-
-
-**Demo**
-
-https://user-images.githubusercontent.com/67196406/121316446-a1b7d480-c909-11eb-9bac-773b7994b05b.mp4
-
-The white line is the Euclidean (L2) distance between the black dot (center of the ROI of the eyes) and the white dot (estimated center of the iris/pupil).
 
 ### Head Pose Estimation
 For the head pose estimation, a standard 3d head model in world coordinates was considered, in combination of the respective face mesh keypoints in the image plane. 
@@ -129,8 +127,9 @@ For any question or if you want to contribute to this project, feel free to cont
 ## Improvements to make
 - [x] Reformat code in packages
 - [x] Add argparser to run the script with various settings using the command line
+- [x] Improve robustness of gaze detection (using mediapipe)
 - [ ] Add argparser option for importing and using the camera matrix and dist. coefficients
 - [ ] Reformat classes to follow design patterns and Python conventions
 - [ ] Improve perfomances of the script by minimizing image processing steps
-- [ ] Improve robustness of gaze detection
+
 

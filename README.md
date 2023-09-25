@@ -24,8 +24,8 @@ Thanks to the awesome contribution of [MustafaLotfi](https://github.com/MustafaL
 
 ## How Does It Work?
 
-This script searches for the driver face, then use the mediapipe library to predict 68 facial keypoints.
-The enumeration and location of all the face keypoints/landmarks can be seen [here](https://raw.githubusercontent.com/e-candeloro/Driver-State-Detection/master/predictor/Keypoint%20map%20example.png).
+This script searches for the driver face, then use the mediapipe library to predict 478 face and iris keypoints.
+The enumeration and location of all the face keypoints/landmarks can be seen [here](https://github.com/e-candeloro/Driver-State-Detection/blob/master/docs/5Mohl.jpg).
 
 With those keypoints, the following scores are computed:
 

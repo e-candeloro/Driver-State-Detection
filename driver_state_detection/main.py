@@ -209,14 +209,14 @@ def main():
                         cv2.FONT_HERSHEY_PLAIN, 2, (255, 255, 255), 1, cv2.LINE_AA)
             
             if roll is not None:
-                cv2.putText(frame, "roll:"+str(roll.round(1)[0]), (500, 40),
-                            cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 255), 1, cv2.LINE_AA)
+                cv2.putText(frame, "roll:"+str(roll.round(1)[0]), (450, 40),
+                            cv2.FONT_HERSHEY_PLAIN, 1.5, (255, 0, 255), 1, cv2.LINE_AA)
             if pitch is not None:
-                cv2.putText(frame, "pitch:"+str(pitch.round(1)[0]), (500, 70),
-                            cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 255), 1, cv2.LINE_AA)
+                cv2.putText(frame, "pitch:"+str(pitch.round(1)[0]), (450, 70),
+                            cv2.FONT_HERSHEY_PLAIN, 1.5, (255, 0, 255), 1, cv2.LINE_AA)
             if yaw is not None:
-                cv2.putText(frame, "yaw:"+str(yaw.round(1)[0]), (500, 100),
-                            cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 255), 1, cv2.LINE_AA)
+                cv2.putText(frame, "yaw:"+str(yaw.round(1)[0]), (450, 100),
+                            cv2.FONT_HERSHEY_PLAIN, 1.5, (255, 0, 255), 1, cv2.LINE_AA)
             
 
             # if the driver is tired, show and alert on screen

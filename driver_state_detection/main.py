@@ -28,6 +28,11 @@ def _get_landmarks(lms):
 
         landmarks = np.array(landmarks)
 
+        landmarks[landmarks[:, 0] < 0., 0] = 0.
+        landmarks[landmarks[:, 0] > 1., 0] = 1.
+        landmarks[landmarks[:, 1] < 0., 1] = 0.
+        landmarks[landmarks[:, 1] > 1., 1] = 1.
+
         dx = landmarks[:, 0].max() - landmarks[:, 0].min()
         dy = landmarks[:, 1].max() - landmarks[:, 1].min()
         new_surface = dx * dy

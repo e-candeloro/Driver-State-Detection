@@ -27,10 +27,7 @@ class EyeDetector:
             of the eyes of the face
         """
 
-        self.keypoints = None
-        self.frame = None
         self.show_processing = show_processing
-        self.eye_width = None
 
     @staticmethod
     def _calc_EAR_eye(eye_pts):
@@ -59,9 +56,6 @@ class EyeDetector:
         landmarks: landmarks: numpy array
             List of 478 mediapipe keypoints of the face
         """
-
-    
-        self.keypoints = landmarks
 
         cv2.circle(color_frame, (landmarks[LEFT_IRIS_NUM, :2] * frame_size).astype(np.uint32),
                    3, (255, 255, 255), cv2.FILLED)
@@ -92,9 +86,6 @@ class EyeDetector:
             The EAR or Eye Aspect Ratio is computed as the eye opennes divided by the eye lenght
             Each eye has his scores and the two scores are averaged
         """
-
-        self.keypoints = landmarks
-        self.frame = frame
 
         # numpy array for storing the keypoints positions of the left and right eyes
         eye_pts_l = np.zeros(shape=(6, 2))
@@ -160,8 +151,6 @@ class EyeDetector:
             If unsuccessful, returns None
 
         """
-        self.keypoints = landmarks
-        self.frame = frame
 
         left_gaze_score, left_eye = self._calc_1eye_score(
             landmarks, EYES_LMS_NUMS[:6], LEFT_IRIS_NUM, frame_size, frame)

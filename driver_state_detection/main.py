@@ -117,7 +117,8 @@ def main():
         frame_size = frame.shape[1], frame.shape[0]
 
         # apply a bilateral filter to lower noise but keep frame details. create a 3D matrix from gray image to give it to the model
-        gray = np.expand_dims(cv2.bilateralFilter(gray, 5, 10, 10), axis=2)
+        # gray = cv2.bilateralFilter(gray, 5, 10, 10)
+        gray = np.expand_dims(gray, axis=2)
         gray = np.concatenate([gray, gray, gray], axis=2)
 
         # find the faces using the face mesh model

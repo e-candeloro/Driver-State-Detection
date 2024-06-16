@@ -17,142 +17,6 @@
 import numpy as np
 
 
-class Singleton(type):
-    """
-    This implements the Singleton design pattern using a metaclass. The Singleton class ensures that only one
-    instance of the class is created and returned whenever the class is called. The metaclass defines the __call__
-    method which creates and returns an instance of the Singleton class if it does not already exist. The _instances
-    dictionary is used to keep track of existing instances of the class. Overall, this implementation ensures that
-    the Singleton class can only be instantiated once and that subsequent calls to the class return the same instance.
-
-    """
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        """
-        The  `__call__`  method is a special method in Python that allows an object to be called like a function. In
-        this case, it is used to create and return an instance of the Singleton class. It checks if the class is not
-        already in the _instances. If it isn't, it creates a new instance of the class and adds it to the _instances.
-        Overall, this implementation ensures that only one instance of the Singleton class is created and returned
-        whenever the class is called.
-
-        Parameters
-        ----------
-        args: Variable length argument list.
-        kwargs: Arbitrary keyword arguments.
-
-        Returns
-        -------
-        The instance of the class as a Singleton object.
-
-        """
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
-
-
-class Debugger(metaclass=Singleton):
-    """
-    The Debugger class is a singleton class that allows an object to run in debug mode.
-
-    Methods
-    -------
-    set_debug: Used to set the debug mode.
-    toggle: Toggles the value of the "debug" attribute.
-    get_debug: Used to get the value of the "debug" attribute.
-
-    """
-    def set_debug(self, debug):
-        """
-        This method is used to set the debug mode for an object. The "debug" parameter is a boolean value that
-        determines whether the object should run in debug mode. By setting the "debug" attribute of the object
-        to the value of the "debug" parameter, the debug mode can be turned on or off.
-
-        Parameters:
-        -----------
-        debug: Debug value as a bool.
-
-        Returns
-        -------
-
-        """
-        self.debug = debug
-
-    def toggle(self):
-        """
-        This method toggles the value of the "debug" attribute of an object. If "debug" is currently True,
-        it will be set to False, and vice versa. The purpose of this function is to easily switch between debug mode
-        and normal mode for the object.
-
-        Returns
-        -------
-
-        """
-        self.debug = not self.debug
-
-    def get_debug(self):
-        """
-        This method is used to get the value of the "debug" attribute.
-
-        Returns
-        -------
-
-        """
-        return self.debug
-
-
-DEBUG = Debugger()
-DEBUG.set_debug(False)
-
-
-class PCF:
-    def __init__(
-        self,
-        near=1,
-        far=10000,
-        frame_height=1920,
-        frame_width=1080,
-        fy=1074.520446598223,
-    ):
-
-        """
-        This method sets the values of several attributes including the near and far clipping planes, frame height
-        and width, and the focal length in the y-direction (fy) for a Perspective Camera Frustum (PCF) object. Then
-        calculates the vertical field of view (fov_y) using the frame height and fy. It then calculates the height
-        and width at the near clipping plane based on the fov_y and frame dimensions. Finally, the method sets the
-        values for the left, right, bottom, and top attributes, which define the boundaries of the viewing frustum.
-        These values are derived from the width and height at the near clipping plane. In other words, this method
-        will define a rectangular region in the 3D space.
-
-        Parameters:
-        -----------
-        near: Near clipping plane value as an int.
-        far: Far clipping plane value as an int.
-        frame_height: Height of frame as an int or a float.
-        frame_width: Height of frame as an int or a float.
-        fy: Focal length in the y-direction as a float.
-
-        """
-        self.near = near
-        self.far = far
-        self.frame_height = frame_height
-        self.frame_width = frame_width
-        self.fy = fy
-
-        fov_y = 2 * np.arctan(frame_height / (2 * fy))
-        
-        # kDegreesToRadians = np.pi / 180.0 # never used
-        height_at_near = 2 * near * np.tan(0.5 * fov_y)
-        width_at_near = frame_width * height_at_near / frame_height
-        # print(height_at_near)
-        
-        self.fov_y = fov_y
-        self.left = -0.5 * width_at_near
-        self.right = 0.5 * width_at_near
-        self.bottom = -0.5 * height_at_near
-        self.top = 0.5 * height_at_near
-
-
 canonical_metric_landmarks = np.array(
     [
         0.000000,
@@ -2542,6 +2406,143 @@ for idx, weight in procrustes_landmark_basis:
     landmark_weights[idx] = weight
 
 
+class Singleton(type):
+    """
+    This implements the Singleton design pattern using a metaclass. The Singleton class ensures that only one
+    instance of the class is created and returned whenever the class is called. The metaclass defines the __call__
+    method which creates and returns an instance of the Singleton class if it does not already exist. The _instances
+    dictionary is used to keep track of existing instances of the class. Overall, this implementation ensures that
+    the Singleton class can only be instantiated once and that subsequent calls to the class return the same instance.
+
+    """
+
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        """
+        The  `__call__`  method is a special method in Python that allows an object to be called like a function. In
+        this case, it is used to create and return an instance of the Singleton class. It checks if the class is not
+        already in the _instances. If it isn't, it creates a new instance of the class and adds it to the _instances.
+        Overall, this implementation ensures that only one instance of the Singleton class is created and returned
+        whenever the class is called.
+
+        Parameters
+        ----------
+        args: Variable length argument list.
+        kwargs: Arbitrary keyword arguments.
+
+        Returns
+        -------
+        The instance of the class as a Singleton object.
+
+        """
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
+class Debugger(metaclass=Singleton):
+    """
+    The Debugger class is a singleton class that allows an object to run in debug mode.
+
+    Methods
+    -------
+    set_debug: Used to set the debug mode.
+    toggle: Toggles the value of the "debug" attribute.
+    get_debug: Used to get the value of the "debug" attribute.
+
+    """
+
+    def set_debug(self, debug):
+        """
+        This method is used to set the debug mode for an object. The "debug" parameter is a boolean value that
+        determines whether the object should run in debug mode. By setting the "debug" attribute of the object
+        to the value of the "debug" parameter, the debug mode can be turned on or off.
+
+        Parameters:
+        -----------
+        debug: Debug value as a bool.
+
+        Returns
+        -------
+
+        """
+        self.debug = debug
+
+    def toggle(self):
+        """
+        This method toggles the value of the "debug" attribute of an object. If "debug" is currently True,
+        it will be set to False, and vice versa. The purpose of this function is to easily switch between debug mode
+        and normal mode for the object.
+
+        Returns
+        -------
+
+        """
+        self.debug = not self.debug
+
+    def get_debug(self):
+        """
+        This method is used to get the value of the "debug" attribute.
+
+        Returns
+        -------
+
+        """
+        return self.debug
+
+
+DEBUG = Debugger()
+DEBUG.set_debug(False)
+
+
+class PCF:
+    def __init__(
+        self,
+        near=1,
+        far=10000,
+        frame_height=1920,
+        frame_width=1080,
+        fy=1074.520446598223,
+    ):
+        """
+        This method sets the values of several attributes including the near and far clipping planes, frame height
+        and width, and the focal length in the y-direction (fy) for a Perspective Camera Frustum (PCF) object. Then
+        calculates the vertical field of view (fov_y) using the frame height and fy. It then calculates the height
+        and width at the near clipping plane based on the fov_y and frame dimensions. Finally, the method sets the
+        values for the left, right, bottom, and top attributes, which define the boundaries of the viewing frustum.
+        These values are derived from the width and height at the near clipping plane. In other words, this method
+        will define a rectangular region in the 3D space.
+
+        Parameters:
+        -----------
+        near: Near clipping plane value as an int.
+        far: Far clipping plane value as an int.
+        frame_height: Height of frame as an int or a float.
+        frame_width: Height of frame as an int or a float.
+        fy: Focal length in the y-direction as a float.
+
+        """
+        self.near = near
+        self.far = far
+        self.frame_height = frame_height
+        self.frame_width = frame_width
+        self.fy = fy
+
+        fov_y = 2 * np.arctan(frame_height / (2 * fy))
+
+        # kDegreesToRadians = np.pi / 180.0 # never used
+        height_at_near = 2 * near * np.tan(0.5 * fov_y)
+        width_at_near = frame_width * height_at_near / frame_height
+        # print(height_at_near)
+
+        self.fov_y = fov_y
+        self.left = -0.5 * width_at_near
+        self.right = 0.5 * width_at_near
+        self.bottom = -0.5 * height_at_near
+        self.top = 0.5 * height_at_near
+
+
 def log(name, f):
     """
     This function is used to log information. If debugging is enabled, the function prints the log message. The
@@ -2628,7 +2629,7 @@ def get_metric_landmarks(screen_landmarks, pcf):
     """
     screen_landmarks = project_xy(screen_landmarks, pcf)
     depth_offset = np.mean(screen_landmarks[2, :])
-    
+
     intermediate_landmarks = screen_landmarks.copy()
     intermediate_landmarks = change_handedness(intermediate_landmarks)
     first_iteration_scale = estimate_scale(intermediate_landmarks)

@@ -1,18 +1,19 @@
+import json
+
 import cv2
 import numpy as np
-import json
 
 
 def load_camera_parameters(file_path):
     try:
-        with open(file_path, 'r') as file:
-            if file_path.endswith('.json'):
+        with open(file_path, "r") as file:
+            if file_path.endswith(".json"):
                 data = json.load(file)
             else:
                 raise ValueError("Unsupported file format. Use JSON or YAML.")
             return (
                 np.array(data["camera_matrix"], dtype="double"),
-                np.array(data["dist_coeffs"], dtype="double")
+                np.array(data["dist_coeffs"], dtype="double"),
             )
     except Exception as e:
         print(f"Failed to load camera parameters: {e}")
@@ -39,8 +40,7 @@ def resize(frame, scale_percent):
 def get_landmarks(lms):
     surface = 0
     for lms0 in lms:
-        landmarks = [np.array([point.x, point.y, point.z])
-                     for point in lms0.landmark]
+        landmarks = [np.array([point.x, point.y, point.z]) for point in lms0.landmark]
 
         landmarks = np.array(landmarks)
 
@@ -185,16 +185,13 @@ def draw_pose_info(frame, img_point, point_proj, roll=None, pitch=None, yaw=None
         Frame with 3d axis drawn and, optionally, the roll,pitch and yaw values drawn
     """
     frame = cv2.line(
-        frame, img_point, tuple(
-            point_proj[0].ravel().astype(int)), (255, 0, 0), 3
+        frame, img_point, tuple(point_proj[0].ravel().astype(int)), (255, 0, 0), 3
     )
     frame = cv2.line(
-        frame, img_point, tuple(
-            point_proj[1].ravel().astype(int)), (0, 255, 0), 3
+        frame, img_point, tuple(point_proj[1].ravel().astype(int)), (0, 255, 0), 3
     )
     frame = cv2.line(
-        frame, img_point, tuple(
-            point_proj[2].ravel().astype(int)), (0, 0, 255), 3
+        frame, img_point, tuple(point_proj[2].ravel().astype(int)), (0, 0, 255), 3
     )
 
     if roll is not None and pitch is not None and yaw is not None:

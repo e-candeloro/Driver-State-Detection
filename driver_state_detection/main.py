@@ -3,8 +3,6 @@ import time
 import cv2
 import mediapipe as mp
 import numpy as np
-
-
 from Attention_Scorer_Module import AttentionScorer as AttScorer
 from Eye_Dector_Module import EyeDetector as EyeDet
 from Parser import get_args
@@ -49,8 +47,9 @@ def main():
     # instantiation of the Eye Detector and Head Pose estimator objects
     Eye_det = EyeDet(show_processing=args.show_eye_proc)
 
-    Head_pose = HeadPoseEst(show_axis=args.show_axis,
-                            camera_matrix=camera_matrix, dist_coeffs=dist_coeffs)
+    Head_pose = HeadPoseEst(
+        show_axis=args.show_axis, camera_matrix=camera_matrix, dist_coeffs=dist_coeffs
+    )
 
     # timing variables
     prev_time = time.perf_counter()

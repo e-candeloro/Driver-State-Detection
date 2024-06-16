@@ -77,7 +77,7 @@ class AttentionScorer:
 
         # constant for the PERCLOS time period
         self.PERCLOS_TIME_PERIOD = 60
-        
+
         # setting for the attention scorer thresholds
         self.ear_thresh = ear_thresh
         self.gaze_thresh = gaze_thresh
@@ -88,21 +88,21 @@ class AttentionScorer:
         self.ear_time_thresh = ear_time_thresh
         self.gaze_time_thresh = gaze_time_thresh
         self.pose_time_thresh = pose_time_thresh
-        
-        #previous timestamp variable and counter/timer variables
+
+        # previous timestamp variable and counter/timer variables
         self.last_time_eye_opened = t_now
         self.last_time_looked_ahead = t_now
         self.last_time_attended = t_now
         self.prev_time = t_now
-        
+
         self.closure_time = 0
         self.not_look_ahead_time = 0
         self.distracted_time = 0
         self.eye_closure_counter = 0
-        
+
         # verbose flag
         self.verbose = verbose
-        
+
     def eval_scores(
         self, t_now, ear_score, gaze_score, head_roll, head_pitch, head_yaw
     ):
@@ -250,8 +250,7 @@ class AttentionScorer:
         delta = t_now - self.prev_time  # set delta timer
         tired = False  # set default value for the tired state of the driver
 
-        all_frames_numbers_in_perclos_duration = int(
-            self.PERCLOS_TIME_PERIOD * fps)
+        all_frames_numbers_in_perclos_duration = int(self.PERCLOS_TIME_PERIOD * fps)
 
         # if the ear_score is lower or equal than the threshold, increase the eye_closure_counter
         if (ear_score is not None) and (ear_score <= self.ear_thresh):

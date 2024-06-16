@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
-
-from Face_Geometry import get_metric_landmarks, procrustes_landmark_basis, PCF
+from Face_Geometry import PCF, get_metric_landmarks, procrustes_landmark_basis
 from Utils import rot_mat_to_euler
 
 
@@ -9,37 +8,37 @@ class HeadPoseEstimator:
 
     def __init__(self, camera_matrix=None, dist_coeffs=None, show_axis: bool = False):
         """
-    Class for estimating the head pose using the image/frame, face mesh landmarks, and camera parameters.
+        Class for estimating the head pose using the image/frame, face mesh landmarks, and camera parameters.
 
-    Attributes
-    ----------
-    show_axis : bool
-        If set to True, shows the head pose axis projected from the nose keypoint and the face landmarks points
-        used for pose estimation (default is False).
-    camera_matrix : numpy array
-        Camera matrix of the camera used to capture the image/frame.
-    dist_coeffs : numpy array
-        Distortion coefficients of the camera used to capture the image/frame.
-    focal_length : float
-        Focal length of the camera used to capture the image/frame.
-    pcf_calculated : bool
-        Flag indicating whether the Perspective Camera Frustum (PCF) has been calculated.
-    model_lms_ids : list
-        List of model landmark IDs used for pose estimation.
-    NOSE_AXES_POINTS : numpy array
-        Array of nose axes points used for drawing the nose axes on the frame.
+        Attributes
+        ----------
+        show_axis : bool
+            If set to True, shows the head pose axis projected from the nose keypoint and the face landmarks points
+            used for pose estimation (default is False).
+        camera_matrix : numpy array
+            Camera matrix of the camera used to capture the image/frame.
+        dist_coeffs : numpy array
+            Distortion coefficients of the camera used to capture the image/frame.
+        focal_length : float
+            Focal length of the camera used to capture the image/frame.
+        pcf_calculated : bool
+            Flag indicating whether the Perspective Camera Frustum (PCF) has been calculated.
+        model_lms_ids : list
+            List of model landmark IDs used for pose estimation.
+        NOSE_AXES_POINTS : numpy array
+            Array of nose axes points used for drawing the nose axes on the frame.
 
-    Methods
-    -------
-    get_pose(frame, landmarks, frame_size)
-        Estimate the head pose using the provided frame, landmarks, and frame size.
-    _get_model_lms_ids()
-        Get the model landmark IDs used for pose estimation.
-    _draw_nose_axes(frame, rvec, tvec, model_img_lms)
-        Draw the nose axes on the frame.
-    _get_camera_parameters(frame_size)
-        Get the camera parameters for pose estimation.
-    """
+        Methods
+        -------
+        get_pose(frame, landmarks, frame_size)
+            Estimate the head pose using the provided frame, landmarks, and frame size.
+        _get_model_lms_ids()
+            Get the model landmark IDs used for pose estimation.
+        _draw_nose_axes(frame, rvec, tvec, model_img_lms)
+            Draw the nose axes on the frame.
+        _get_camera_parameters(frame_size)
+            Get the camera parameters for pose estimation.
+        """
 
         self.show_axis = show_axis
         self.camera_matrix = camera_matrix
@@ -57,8 +56,7 @@ class HeadPoseEstimator:
     @staticmethod
     def _get_model_lms_ids():
         JAW_LMS_NUMS = [61, 291, 199]
-        model_lms_ids = JAW_LMS_NUMS + \
-            [key for key, _ in procrustes_landmark_basis]
+        model_lms_ids = JAW_LMS_NUMS + [key for key, _ in procrustes_landmark_basis]
         model_lms_ids.sort()
 
         return model_lms_ids
@@ -124,8 +122,7 @@ class HeadPoseEstimator:
                 tvec,
             )
 
-            rvec1 = np.array(
-                [rvec[2, 0], rvec[0, 0], rvec[1, 0]]).reshape((3, 1))
+            rvec1 = np.array([rvec[2, 0], rvec[0, 0], rvec[1, 0]]).reshape((3, 1))
 
             # cv2.Rodrigues: convert a rotation vector to a rotation matrix (also known as a Rodrigues rotation matrix)
             rmat, _ = cv2.Rodrigues(rvec1)
@@ -184,7 +181,6 @@ class HeadPoseEstimator:
         if self.dist_coeffs is None:
             self.dist_coeffs = np.zeros((5, 1))
 
-        self.pcf = PCF(frame_height=fr_h, frame_width=fr_w,
-                       fy=self.focal_length)
+        self.pcf = PCF(frame_height=fr_h, frame_width=fr_w, fy=self.focal_length)
 
         self.pcf_calculated = True

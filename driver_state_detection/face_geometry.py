@@ -16,7 +16,6 @@
 
 import numpy as np
 
-
 canonical_metric_landmarks = np.array(
     [
         0.000000,

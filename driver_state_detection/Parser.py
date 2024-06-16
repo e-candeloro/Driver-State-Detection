@@ -16,9 +16,9 @@ def get_args():
     )
 
     parser.add_argument(
-        '--camera_params',
+        "--camera_params",
         type=str,
-        help='Path to the camera parameters file (JSON or YAML).'
+        help="Path to the camera parameters file (JSON or YAML).",
     )
 
     # visualisation parameters

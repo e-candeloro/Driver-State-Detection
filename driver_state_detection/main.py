@@ -1,4 +1,5 @@
 import time
+import pprint
 
 import cv2
 import mediapipe as mp
@@ -14,9 +15,6 @@ def main():
 
     args = get_args()
 
-    if args.verbose:
-        print(f"Arguments and Parameters used:\n{args}\n")
-
     if not cv2.useOptimized():
         try:
             cv2.setUseOptimized(True)  # set OpenCV optimization to True
@@ -30,8 +28,14 @@ def main():
     else:
         camera_matrix, dist_coeffs = None, None
 
-    print("Camera Matrix:", camera_matrix)
-    print("Distortion Coefficients:", dist_coeffs)
+    if args.verbose:
+        print("Arguments and Parameters used:\n")
+        pprint.pp(vars(args), indent=4)
+        print("\nCamera Matrix:")
+        pprint.pp(camera_matrix, indent=4)
+        print("\nDistortion Coefficients:")
+        pprint.pp(dist_coeffs, indent=4)
+        print("\n")
 
     """instantiation of mediapipe face mesh model. This model give back 478 landmarks
     if the rifine_landmarks parameter is set to True. 468 landmarks for the face and

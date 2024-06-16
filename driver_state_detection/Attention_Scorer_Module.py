@@ -215,9 +215,6 @@ class AttentionScorer:
 
         if self.verbose:  # print additional info if verbose is True
             print(
-                f"ear counter:{self.ear_counter}/{self.ear_act_thresh}\ngaze counter:{self.gaze_counter}/{self.gaze_act_thresh}\npose counter:{self.pose_counter}/{self.pose_act_thresh}"
-            )
-            print(
                 f"eye closed:{asleep}\tlooking away:{looking_away}\tdistracted:{distracted}"
             )
 

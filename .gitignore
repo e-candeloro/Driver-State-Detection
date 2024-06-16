@@ -1,6 +1,6 @@
 #Other files
 *.ini
-
+camera_calibration/calib_photos/*
 #GITIGNORE TEMPLATE COPIED FROM GITHUB GITIGNORE REPO + INTELLIJ GITIGNORE REPO
 
 # Byte-compiled / optimized / DLL files

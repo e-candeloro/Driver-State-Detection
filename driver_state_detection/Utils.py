@@ -1,5 +1,22 @@
-import numpy as np
 import cv2
+import numpy as np
+import json
+
+
+def load_camera_parameters(file_path):
+    try:
+        with open(file_path, 'r') as file:
+            if file_path.endswith('.json'):
+                data = json.load(file)
+            else:
+                raise ValueError("Unsupported file format. Use JSON or YAML.")
+            return (
+                np.array(data["camera_matrix"], dtype="double"),
+                np.array(data["dist_coeffs"], dtype="double")
+            )
+    except Exception as e:
+        print(f"Failed to load camera parameters: {e}")
+        return None, None
 
 
 def resize(frame, scale_percent):
@@ -17,6 +34,28 @@ def resize(frame, scale_percent):
 
     resized = cv2.resize(frame, dim, interpolation=cv2.INTER_LINEAR)
     return resized
+
+
+def get_landmarks(lms):
+    surface = 0
+    for lms0 in lms:
+        landmarks = [np.array([point.x, point.y, point.z])
+                     for point in lms0.landmark]
+
+        landmarks = np.array(landmarks)
+
+        landmarks[landmarks[:, 0] < 0.0, 0] = 0.0
+        landmarks[landmarks[:, 0] > 1.0, 0] = 1.0
+        landmarks[landmarks[:, 1] < 0.0, 1] = 0.0
+        landmarks[landmarks[:, 1] > 1.0, 1] = 1.0
+
+        dx = landmarks[:, 0].max() - landmarks[:, 0].min()
+        dy = landmarks[:, 1].max() - landmarks[:, 1].min()
+        new_surface = dx * dy
+        if new_surface > surface:
+            biggest_face = landmarks
+
+    return biggest_face
 
 
 def get_face_area(face):
@@ -78,55 +117,55 @@ def get_array_keypoints(landmarks, dtype="int", verbose: bool = False):
     return points_array
 
 
-def isRotationMatrix(R, precision=1e-4):
+def rot_mat_to_euler(rmat):
     """
-    Checks if a matrix is a rotation matrix
-    :param R: np.array matrix of 3 by 3
-    :param precision: float
-        precision to respect to accept a zero value in identity matrix check (default is 1e-4)
-    :return: True or False
-        Return True if a matrix is a rotation matrix, False if not
+    This function converts a rotation matrix into Euler angles. It first checks if the given matrix is a valid
+    rotation matrix by comparing its calculated identity matrix to the identity matrix. If it is a valid rotation
+    matrix, it checks for the presence of a gimbal lock situation. If there is no gimbal lock, it calculates the
+    Euler angles using the arctan2 function. If there is a gimbal lock, it uses a different formula for yaw, pitch,
+    and roll. The function then checks the signs of the angles and adjusts them accordingly. Finally, it returns the
+    Euler angles in degrees, rounded to two decimal places.
+
+    Parameters
+    ----------
+    rmat: A rotation matrix as a np.ndarray.
+
+    Returns
+    -------
+    Euler angles in degrees as a np.ndarray.
+
     """
-    Rt = np.transpose(R)
-    shouldBeIdentity = np.dot(Rt, R)
-    I = np.identity(3, dtype=R.dtype)
-    n = np.linalg.norm(I - shouldBeIdentity)
-    return n < precision
+    rtr = np.transpose(rmat)
+    r_identity = np.matmul(rtr, rmat)
 
+    I = np.identity(3, dtype=rmat.dtype)
+    if np.linalg.norm(r_identity - I) < 1e-6:
+        sy = (rmat[:2, 0] ** 2).sum() ** 0.5
+        singular = sy < 1e-6
 
-def rotationMatrixToEulerAngles(R, precision=1e-4):
-    '''
-    Computes the Tait–Bryan Euler (XYZ) angles from a Rotation Matrix.
-    Also checks if there is a gymbal lock and eventually use an alternative formula
-    :param R: np.array
-        3 x 3 Rotation matrix
-    :param precision: float
-        precision to respect to accept a zero value in identity matrix check (default is 1e-4)
-    :return: (yaw, pitch, roll) tuple of float numbers
-        Euler angles in radians in the order of YAW, PITCH, ROLL
-    '''
+        if not singular:  # check if it's a gimbal lock situation
+            x = np.arctan2(rmat[2, 1], rmat[2, 2])
+            y = np.arctan2(-rmat[2, 0], sy)
+            z = np.arctan2(rmat[1, 0], rmat[0, 0])
 
-    # Calculates Tait–Bryan Euler angles from a Rotation Matrix
-    assert (isRotationMatrix(R, precision))  # check if it's a Rmat
+        else:  # if in gimbal lock, use different formula for yaw, pitch roll
+            x = np.arctan2(-rmat[1, 2], rmat[1, 1])
+            y = np.arctan2(-rmat[2, 0], sy)
+            z = 0
 
-    # assert that sqrt(R11^2 + R21^2) != 0
-    sy = np.sqrt(R[0, 0] * R[0, 0] + R[1, 0] * R[1, 0])
-    singular = sy < precision
+        if x > 0:
+            x = np.pi - x
+        else:
+            x = -(np.pi + x)
 
-    if not singular:  # if not in a singularity, use the standard formula
-        x = np.arctan2(R[2, 1], R[2, 2])  # atan2(R31, R33) -> YAW, angle PSI
+        if z > 0:
+            z = np.pi - z
+        else:
+            z = -(np.pi + z)
 
-        # atan2(-R31, sqrt(R11^2 + R21^2)) -> PITCH, angle delta
-        y = np.arctan2(-R[2, 0], sy)
-
-        z = np.arctan2(R[1, 0], R[0, 0])  # atan2(R21,R11) -> ROLL, angle phi
-
-    else:  # if in gymbal lock, use different formula for yaw, pitch roll
-        x = np.arctan2(-R[1, 2], R[1, 1])
-        y = np.arctan2(-R[2, 0], sy)
-        z = 0
-
-    return np.array([x, y, z])  # returns YAW, PITCH, ROLL angles in radians
+        return (np.array([x, y, z]) * 180.0 / np.pi).round(2)
+    else:
+        print("Isn't rotation matrix")
 
 
 def draw_pose_info(frame, img_point, point_proj, roll=None, pitch=None, yaw=None):
@@ -145,19 +184,49 @@ def draw_pose_info(frame, img_point, point_proj, roll=None, pitch=None, yaw=None
     :return: frame: opencv image/frame
         Frame with 3d axis drawn and, optionally, the roll,pitch and yaw values drawn
     """
-    frame = cv2.line(frame, img_point, tuple(
-        point_proj[0].ravel().astype(int)), (255, 0, 0), 3)
-    frame = cv2.line(frame, img_point, tuple(
-        point_proj[1].ravel().astype(int)), (0, 255, 0), 3)
-    frame = cv2.line(frame, img_point, tuple(
-        point_proj[2].ravel().astype(int)), (0, 0, 255), 3)
+    frame = cv2.line(
+        frame, img_point, tuple(
+            point_proj[0].ravel().astype(int)), (255, 0, 0), 3
+    )
+    frame = cv2.line(
+        frame, img_point, tuple(
+            point_proj[1].ravel().astype(int)), (0, 255, 0), 3
+    )
+    frame = cv2.line(
+        frame, img_point, tuple(
+            point_proj[2].ravel().astype(int)), (0, 0, 255), 3
+    )
 
     if roll is not None and pitch is not None and yaw is not None:
-        cv2.putText(frame, "Roll:" + str(round(roll, 0)), (500, 50),
-                    cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1, cv2.LINE_AA)
-        cv2.putText(frame, "Pitch:" + str(round(pitch, 0)), (500, 70),
-                    cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1, cv2.LINE_AA)
-        cv2.putText(frame, "Yaw:" + str(round(yaw, 0)), (500, 90),
-                    cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1, cv2.LINE_AA)
+        cv2.putText(
+            frame,
+            "Roll:" + str(round(roll, 0)),
+            (500, 50),
+            cv2.FONT_HERSHEY_PLAIN,
+            1,
+            (255, 255, 255),
+            1,
+            cv2.LINE_AA,
+        )
+        cv2.putText(
+            frame,
+            "Pitch:" + str(round(pitch, 0)),
+            (500, 70),
+            cv2.FONT_HERSHEY_PLAIN,
+            1,
+            (255, 255, 255),
+            1,
+            cv2.LINE_AA,
+        )
+        cv2.putText(
+            frame,
+            "Yaw:" + str(round(yaw, 0)),
+            (500, 90),
+            cv2.FONT_HERSHEY_PLAIN,
+            1,
+            (255, 255, 255),
+            1,
+            cv2.LINE_AA,
+        )
 
     return frame

@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from numpy import linalg as LA
-from Utils import resize
+from utils import resize
 
 EYES_LMS_NUMS = [33, 133, 160, 144, 158, 153, 362, 263, 385, 380, 387, 373]
 LEFT_IRIS_NUM = 468
@@ -109,8 +109,10 @@ class EyeDetector:
             # array of x,y coordinates for the right eye reference point
             eye_pts_r[i] = landmarks[EYES_LMS_NUMS[i + 6], :2]
 
-        ear_left = self._calc_EAR_eye(eye_pts_l)  # computing the left eye EAR score
-        ear_right = self._calc_EAR_eye(eye_pts_r)  # computing the right eye EAR score
+        # computing the left eye EAR score
+        ear_left = self._calc_EAR_eye(eye_pts_l)
+        # computing the right eye EAR score
+        ear_right = self._calc_EAR_eye(eye_pts_r)
 
         # computing the average EAR score
         ear_avg = (ear_left + ear_right) / 2
@@ -138,7 +140,8 @@ class EyeDetector:
         eye_x_max_frame = int(eye_x_max * frame_size[0])
         eye_y_max_frame = int(eye_y_max * frame_size[1])
 
-        eye = frame[eye_y_min_frame:eye_y_max_frame, eye_x_min_frame:eye_x_max_frame]
+        eye = frame[eye_y_min_frame:eye_y_max_frame,
+                    eye_x_min_frame:eye_x_max_frame]
 
         return eye_gaze_score, eye
 

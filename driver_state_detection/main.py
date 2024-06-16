@@ -4,11 +4,12 @@ import pprint
 import cv2
 import mediapipe as mp
 import numpy as np
-from Attention_Scorer_Module import AttentionScorer as AttScorer
-from Eye_Dector_Module import EyeDetector as EyeDet
-from Parser import get_args
-from Pose_Estimation_Module import HeadPoseEstimator as HeadPoseEst
-from Utils import get_landmarks, load_camera_parameters
+
+from attention_scorer import AttentionScorer as AttScorer
+from eye_detector import EyeDetector as EyeDet
+from parser import get_args
+from pose_estimation import HeadPoseEstimator as HeadPoseEst
+from utils import get_landmarks, load_camera_parameters
 
 
 def main():

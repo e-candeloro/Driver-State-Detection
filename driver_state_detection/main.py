@@ -135,10 +135,11 @@ def main():
             )
 
             # compute the EAR score of the eyes
-            ear = Eye_det.get_EAR(frame=gray, landmarks=landmarks)
+            ear = Eye_det.get_EAR(landmarks=landmarks)
 
-            # compute the PERCLOS score and state of tiredness
-            tired, perclos_score = Scorer.get_PERCLOS(t_now, fps, ear)
+            # compute the *rolling* PERCLOS score and state of tiredness
+            # if you don't want to use the rolling PERCLOS, use the get_PERCLOS method instead
+            tired, perclos_score = Scorer.get_rolling_PERCLOS(t_now, ear)
 
             # compute the Gaze Score
             gaze = Eye_det.get_Gaze_Score(

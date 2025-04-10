@@ -19,14 +19,6 @@ class HeadPoseEstimator:
             Camera matrix of the camera used to capture the image/frame.
         dist_coeffs : numpy array
             Distortion coefficients of the camera used to capture the image/frame.
-        focal_length : float
-            Focal length of the camera used to capture the image/frame.
-        pcf_calculated : bool
-            Flag indicating whether the Perspective Camera Frustum (PCF) has been calculated.
-        model_lms_ids : list
-            List of model landmark IDs used for pose estimation.
-        NOSE_AXES_POINTS : numpy array
-            Array of nose axes points used for drawing the nose axes on the frame.
 
         Methods
         -------
@@ -40,6 +32,11 @@ class HeadPoseEstimator:
             Get the camera parameters for pose estimation.
         """
 
+        self.NOSE_AXES_POINTS = np.array(
+            [[7, 0, 10], [0, 7, 6], [0, 0, 14]], dtype=float
+        )
+        self.JAW_LMS_NUMS = [61, 291, 199]
+
         self.show_axis = show_axis
         self.camera_matrix = camera_matrix
         self.dist_coeffs = dist_coeffs
@@ -49,14 +46,8 @@ class HeadPoseEstimator:
 
         self.model_lms_ids = self._get_model_lms_ids()
 
-        self.NOSE_AXES_POINTS = np.array(
-            [[7, 0, 10], [0, 7, 6], [0, 0, 14]], dtype=float
-        )
-
-    @staticmethod
-    def _get_model_lms_ids():
-        JAW_LMS_NUMS = [61, 291, 199]
-        model_lms_ids = JAW_LMS_NUMS + \
+    def _get_model_lms_ids(self):
+        model_lms_ids = self.JAW_LMS_NUMS + \
             [key for key, _ in procrustes_landmark_basis]
         model_lms_ids.sort()
 

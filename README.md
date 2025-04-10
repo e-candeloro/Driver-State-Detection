@@ -9,15 +9,18 @@ Real time, webcam based, driver attention state detection and monitoring using P
 This work is partially based on [this paper](https://www.researchgate.net/publication/327942674_Vision-Based_Driver%27s_Attention_Monitoring_System_for_Smart_Vehicles) for the scores and methods used.
 
 ## Mediapipe Update
+
 Thanks to the awesome contribution of [MustafaLotfi](https://github.com/MustafaLotfi), now the script uses the better performing and accurate face keypoints detection model from the [Google Mediapipe library](https://github.com/google/mediapipe).
 
-### Features added:
+## Last Features added:
 
-- 478 face keypoints detection
-- Direct iris keypoint detection for gaze score estimation
+- Fast 478 face keypoints detection with Mediapipe
+- Direct iris keypoint detection with Mediapipe for gaze score estimation
 - Improved head pose estimation using the dynamical canonical face model
 - Fixed euler angles function and wrong returned values
 - Using time variables to make the code more modular and machine agnostic
+- Added rolling PERCLOS estimation and smoother driver state detection with decay factor
+- Added new demo video
 
 **NOTE**: the old mediapipe version can still be found in the "dlib-based" repository branch.
 

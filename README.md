@@ -1,9 +1,9 @@
 # Real Time Driver State Detection
 ![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)  ![OpenCV](https://img.shields.io/badge/opencv-%23white.svg?style=for-the-badge&logo=opencv&logoColor=white) 
 
-Real time, webcam based, driver attention state detection and monitoring using Python with the OpenCV and mediapipe libraries.
+Real time, webcam based, driver attention state detection and monitoring using Python with the OpenCV and Mediapipe libraries.
 
-![driver state detection demo](https://user-images.githubusercontent.com/67196406/173455413-ba95db40-6be5-4d64-9a1d-6c998854130e.gif)
+![driver state detection demo](./demo/new_mediapipe_dsd_demo.gif)
 
 **Note**:
 This work is partially based on [this paper](https://www.researchgate.net/publication/327942674_Vision-Based_Driver%27s_Attention_Monitoring_System_for_Smart_Vehicles) for the scores and methods used.
@@ -24,7 +24,7 @@ Thanks to the awesome contribution of [MustafaLotfi](https://github.com/MustafaL
 ## How Does It Work?
 
 This script searches for the driver face, then use the mediapipe library to predict 478 face and iris keypoints.
-The enumeration and location of all the face keypoints/landmarks can be seen [here](https://github.com/e-candeloro/Driver-State-Detection/blob/master/docs/5Mohl.jpg).
+The enumeration and location of all the face keypoints/landmarks can be seen [here](./demo/face_keypoints.jpg).
 
 With those keypoints, the following scores are computed:
 
@@ -43,14 +43,9 @@ The driver states can be classified as:
 
 ## Demo
 
-**MEDIAPIPE DEMO COMING SOON**
-
-**OLD DEMO:**
-
-<video src="https://user-images.githubusercontent.com/67196406/121312501-bb571d00-c905-11eb-8d25-1cd28efc9110.mp4" controls="controls" style="max-width: 100%; height: auto;">
+<video src="./demo/new_mediapipe_dsd_demo.mp4" controls="controls" style="max-width: 100%; height: auto;">
     Your browser does not support the video tag.
 </video>
-
 
 ## The Scores Explained
 

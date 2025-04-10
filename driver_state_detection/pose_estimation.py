@@ -5,7 +5,6 @@ from utils import rot_mat_to_euler
 
 
 class HeadPoseEstimator:
-
     def __init__(self, camera_matrix=None, dist_coeffs=None, show_axis: bool = False):
         """
         Class for estimating the head pose using the image/frame, face mesh landmarks, and camera parameters.
@@ -47,8 +46,9 @@ class HeadPoseEstimator:
         self.model_lms_ids = self._get_model_lms_ids()
 
     def _get_model_lms_ids(self):
-        model_lms_ids = self.JAW_LMS_NUMS + \
-            [key for key, _ in procrustes_landmark_basis]
+        model_lms_ids = self.JAW_LMS_NUMS + [
+            key for key, _ in procrustes_landmark_basis
+        ]
         model_lms_ids.sort()
 
         return model_lms_ids
@@ -114,8 +114,7 @@ class HeadPoseEstimator:
                 tvec,
             )
 
-            rvec1 = np.array(
-                [rvec[2, 0], rvec[0, 0], rvec[1, 0]]).reshape((3, 1))
+            rvec1 = np.array([rvec[2, 0], rvec[0, 0], rvec[1, 0]]).reshape((3, 1))
 
             # cv2.Rodrigues: convert a rotation vector to a rotation matrix (also known as a Rodrigues rotation matrix)
             rmat, _ = cv2.Rodrigues(rvec1)
@@ -174,7 +173,6 @@ class HeadPoseEstimator:
         if self.dist_coeffs is None:
             self.dist_coeffs = np.zeros((5, 1))
 
-        self.pcf = PCF(frame_height=fr_h, frame_width=fr_w,
-                       fy=self.focal_length)
+        self.pcf = PCF(frame_height=fr_h, frame_width=fr_w, fy=self.focal_length)
 
         self.pcf_calculated = True

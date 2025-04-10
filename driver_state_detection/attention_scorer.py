@@ -132,7 +132,9 @@ class AttentionScorer:
         else:
             return metric_value * self.decay_factor
 
-    def eval_scores(self, t_now, ear_score, gaze_score, head_roll, head_pitch, head_yaw):
+    def eval_scores(
+        self, t_now, ear_score, gaze_score, head_roll, head_pitch, head_yaw
+    ):
         """
         Evaluate the driver's state of attention using smoothed metrics.
 
@@ -171,26 +173,24 @@ class AttentionScorer:
         self.closure_time = self._update_metric(
             self.closure_time,
             (ear_score is not None and ear_score <= self.ear_thresh),
-            elapsed
+            elapsed,
         )
 
         # Update the gaze metric
         self.not_look_ahead_time = self._update_metric(
             self.not_look_ahead_time,
             (gaze_score is not None and gaze_score > self.gaze_thresh),
-            elapsed
+            elapsed,
         )
 
         # Update the head pose metric: check if any head angle exceeds its threshold
         head_condition = (
-            (head_roll is not None and abs(head_roll) > self.roll_thresh) or
-            (head_pitch is not None and abs(head_pitch) > self.pitch_thresh) or
-            (head_yaw is not None and abs(head_yaw) > self.yaw_thresh)
+            (head_roll is not None and abs(head_roll) > self.roll_thresh)
+            or (head_pitch is not None and abs(head_pitch) > self.pitch_thresh)
+            or (head_yaw is not None and abs(head_yaw) > self.yaw_thresh)
         )
         self.distracted_time = self._update_metric(
-            self.distracted_time,
-            head_condition,
-            elapsed
+            self.distracted_time, head_condition, elapsed
         )
 
         # Determine driver state based on thresholds
@@ -235,8 +235,7 @@ class AttentionScorer:
         delta = t_now - self.prev_time  # set delta timer
         tired = False  # set default value for the tired state of the driver
 
-        all_frames_numbers_in_perclos_duration = int(
-            self.PERCLOS_TIME_PERIOD * fps)
+        all_frames_numbers_in_perclos_duration = int(self.PERCLOS_TIME_PERIOD * fps)
 
         # if the ear_score is lower or equal than the threshold, increase the eye_closure_counter
         if (ear_score is not None) and (ear_score <= self.ear_thresh):

@@ -13,7 +13,6 @@ from utils import get_landmarks, load_camera_parameters
 
 
 def main():
-
     args = get_args()
 
     if not cv2.useOptimized():
@@ -86,7 +85,6 @@ def main():
     # time.sleep(0.01)  # To prevent zero division error when calculating the FPS
 
     while True:  # infinite loop for webcam video capture
-
         # get current time in seconds
         t_now = time.perf_counter()
 

@@ -19,9 +19,9 @@ def main():
     if not cv2.useOptimized():
         try:
             cv2.setUseOptimized(True)  # set OpenCV optimization to True
-        except:
+        except Exception as e:
             print(
-                "OpenCV optimization could not be set to True, the script may be slower than expected"
+                f"OpenCV optimization could not be set to True, the script may be slower than expected.\nError: {e}"
             )
 
     if args.camera_params:

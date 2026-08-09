@@ -2,7 +2,6 @@ import argparse
 
 
 def get_args():
-
     parser = argparse.ArgumentParser(description="Driver State Detection")
 
     # selection the camera number, default is 0 (webcam)

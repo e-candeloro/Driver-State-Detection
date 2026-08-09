@@ -5,7 +5,6 @@ from utils import resize
 
 
 class EyeDetector:
-
     def __init__(self, show_processing: bool = False):
         """
         Eye dector class that contains various method for eye aperture rate estimation and gaze score estimation
@@ -25,8 +24,7 @@ class EyeDetector:
 
         self.show_processing = show_processing
         # Eye landmarks numbers constants
-        self.EYES_LMS_NUMS = [33, 133, 160, 144, 158,
-                              153, 362, 263, 385, 380, 387, 373]
+        self.EYES_LMS_NUMS = [33, 133, 160, 144, 158, 153, 362, 263, 385, 380, 387, 373]
         self.LEFT_IRIS_NUM = 468
         self.RIGHT_IRIS_NUM = 473
 
@@ -68,8 +66,7 @@ class EyeDetector:
         )
         cv2.circle(
             color_frame,
-            (landmarks[self.RIGHT_IRIS_NUM, :2]
-             * frame_size).astype(np.uint32),
+            (landmarks[self.RIGHT_IRIS_NUM, :2] * frame_size).astype(np.uint32),
             3,
             (255, 255, 255),
             cv2.FILLED,
@@ -140,8 +137,7 @@ class EyeDetector:
         eye_x_max_frame = int(eye_x_max * frame_size[0])
         eye_y_max_frame = int(eye_y_max * frame_size[1])
 
-        eye = frame[eye_y_min_frame:eye_y_max_frame,
-                    eye_x_min_frame:eye_x_max_frame]
+        eye = frame[eye_y_min_frame:eye_y_max_frame, eye_x_min_frame:eye_x_max_frame]
 
         return eye_gaze_score, eye
 

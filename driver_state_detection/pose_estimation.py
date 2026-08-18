@@ -1,36 +1,24 @@
 import cv2
 import numpy as np
-from face_geometry import PCF, get_metric_landmarks, procrustes_landmark_basis
-from utils import rot_mat_to_euler
+
+from driver_state_detection.face_geometry import (
+    PCF,
+    get_metric_landmarks,
+    procrustes_landmark_basis,
+)
+from driver_state_detection.utils import rot_mat_to_euler
 
 
 class HeadPoseEstimator:
-    def __init__(self, camera_matrix=None, dist_coeffs=None, show_axis: bool = False):
-        """
-        Class for estimating the head pose using the image/frame, face mesh landmarks, and camera parameters.
+    """Estimate roll, pitch, and yaw from MediaPipe landmarks and camera intrinsics."""
 
-        Attributes
-        ----------
-        show_axis : bool
-            If set to True, shows the head pose axis projected from the nose keypoint and the face landmarks points
-            used for pose estimation (default is False).
-        camera_matrix : numpy array
-            Camera matrix of the camera used to capture the image/frame.
-        dist_coeffs : numpy array
-            Distortion coefficients of the camera used to capture the image/frame.
-
-        Methods
-        -------
-        get_pose(frame, landmarks, frame_size)
-            Estimate the head pose using the provided frame, landmarks, and frame size.
-        _get_model_lms_ids()
-            Get the model landmark IDs used for pose estimation.
-        _draw_nose_axes(frame, rvec, tvec, model_img_lms)
-            Draw the nose axes on the frame.
-        _get_camera_parameters(frame_size)
-            Get the camera parameters for pose estimation.
-        """
-
+    def __init__(
+        self,
+        camera_matrix=None,
+        dist_coeffs=None,
+        camera_image_size=None,
+        show_axis: bool = False,
+    ):
         self.NOSE_AXES_POINTS = np.array(
             [[7, 0, 10], [0, 7, 6], [0, 0, 14]], dtype=float
         )
@@ -39,6 +27,7 @@ class HeadPoseEstimator:
         self.show_axis = show_axis
         self.camera_matrix = camera_matrix
         self.dist_coeffs = dist_coeffs
+        self.camera_image_size = camera_image_size
         self.focal_length = None
 
         self.pcf_calculated = False
@@ -46,6 +35,7 @@ class HeadPoseEstimator:
         self.model_lms_ids = self._get_model_lms_ids()
 
     def _get_model_lms_ids(self):
+        """Combine stable jaw anchors with the weighted Procrustes basis."""
         model_lms_ids = self.JAW_LMS_NUMS + [
             key for key, _ in procrustes_landmark_basis
         ]
@@ -54,22 +44,7 @@ class HeadPoseEstimator:
         return model_lms_ids
 
     def get_pose(self, frame, landmarks, frame_size):
-        """
-        Estimate head pose using the head pose estimator object instantiated attribute
-
-        Parameters
-        ----------
-        frame: numpy array
-            Image/frame captured by the camera
-        landmarks: numpy array
-            mediapiep face mesh detected 478 landmarks of the head
-
-        Returns
-        --------
-        - if successful: image_frame, yaw, pitch, roll  (tuple)
-        - if unsuccessful: None,None,None,None (tuple)
-
-        """
+        """Return ``(frame, roll, pitch, yaw)`` in degrees, or four ``None`` values."""
 
         rvec = None
         tvec = None
@@ -88,22 +63,13 @@ class HeadPoseEstimator:
 
         model_metric_lms = metric_lms[self.model_lms_ids, :]
 
-        (solve_pnp_success, rvec, tvec) = cv2.solvePnP(
+        solve_pnp_success, rvec, tvec = cv2.solvePnP(
             model_metric_lms,
             model_img_lms,
             self.camera_matrix,
             self.dist_coeffs,
             flags=cv2.SOLVEPNP_ITERATIVE,
         )
-        """
-        The OpenCV Solve PnP method computes the rotation and translation vectors with respect to the camera coordinate 
-        system of the image_points referred to the 3d head model_points. It takes into account the camera matrix and
-        the distortion coefficients.
-        The method used is iterative (cv2.SOLVEPNP_ITERATIVE)
-        An alternative method can be the cv2.SOLVEPNP_SQPNP
-        """
-        tvec = tvec.round(2)
-
         if solve_pnp_success:
             rvec, tvec = cv2.solvePnPRefineVVS(
                 model_metric_lms,
@@ -114,33 +80,24 @@ class HeadPoseEstimator:
                 tvec,
             )
 
+            # Convert MediaPipe's metric axes into the Euler convention used by the UI.
             rvec1 = np.array([rvec[2, 0], rvec[0, 0], rvec[1, 0]]).reshape((3, 1))
 
-            # cv2.Rodrigues: convert a rotation vector to a rotation matrix (also known as a Rodrigues rotation matrix)
             rmat, _ = cv2.Rodrigues(rvec1)
 
             eulers = rot_mat_to_euler(rmat).reshape((-1, 1))
 
-            """
-            We use the rotationMatrixToEulerAngles function to compute the euler angles (roll, pitch, yaw) from the
-            Rotation Matrix. This function also checks if we have a gymbal lock.
-            The angles are converted from radians to degrees 
-            
-            An alternative method to compute the euler angles is the following:
-        
-            P = np.hstack((Rmat,tvec)) -> computing the projection matrix
-            euler_angles = -cv2.decomposeProjectionMatrix(P)[6] -> extracting euler angles for yaw pitch and roll from the projection matrix
-            """
+            if self.show_axis:
+                self._draw_nose_axes(frame, rvec, tvec, model_img_lms)
 
-            self._draw_nose_axes(frame, rvec, tvec, model_img_lms)
-
-            return frame, eulers[0], eulers[1], eulers[2]
+            return frame, float(eulers[0, 0]), float(eulers[1, 0]), float(eulers[2, 0])
 
         else:
             return None, None, None, None
 
     def _draw_nose_axes(self, frame, rvec, tvec, model_img_lms):
-        (nose_axes_point2D, _) = cv2.projectPoints(
+        """Draw x, y, and z nose axes in blue, green, and red (OpenCV BGR)."""
+        nose_axes_point2D, _ = cv2.projectPoints(
             self.NOSE_AXES_POINTS, rvec, tvec, self.camera_matrix, self.dist_coeffs
         )
         nose = tuple(model_img_lms[0, :2].astype(int))
@@ -154,6 +111,7 @@ class HeadPoseEstimator:
         cv2.line(frame, nose, nose_z, (0, 0, 255), 2)
 
     def _get_camera_parameters(self, frame_size):
+        """Create or resolution-scale intrinsics and cache the resulting PCF."""
         fr_w = frame_size[0]
         fr_h = frame_size[1]
         if self.camera_matrix is None:
@@ -169,7 +127,17 @@ class HeadPoseEstimator:
             )
             self.focal_length = focal_length
         else:
-            self.focal_length = self.camera_matrix[0, 0]
+            if self.camera_image_size and tuple(frame_size) != tuple(
+                self.camera_image_size
+            ):
+                scale_x = fr_w / self.camera_image_size[0]
+                scale_y = fr_h / self.camera_image_size[1]
+                self.camera_matrix = self.camera_matrix.copy()
+                self.camera_matrix[0, 0] *= scale_x
+                self.camera_matrix[0, 2] *= scale_x
+                self.camera_matrix[1, 1] *= scale_y
+                self.camera_matrix[1, 2] *= scale_y
+            self.focal_length = self.camera_matrix[1, 1]
         if self.dist_coeffs is None:
             self.dist_coeffs = np.zeros((5, 1))
 

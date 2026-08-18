@@ -1,21 +1,30 @@
-[tool.poetry]
-name = "dsd"
+[project]
+name = "driver-state-detection"
 version = "0.1.0"
-description = ""
-authors = ["Ettore Candeloro"]
+description = "Real-time driver fatigue and distraction detection"
 readme = "README.md"
+requires-python = ">=3.12,<3.13"
+authors = [{ name = "Ettore Candeloro" }]
+dependencies = [
+    "mediapipe>=1.0.0,<2",
+    "numpy>=2.0,<3",
+    "opencv-contrib-python>=5.0.0.93,<6",
+]
 
-[tool.poetry.dependencies]
-python = "^3.10"
-opencv-contrib-python = "^4.10.0.82"
-mediapipe = "^0.10.14"
-numpy = "^1.0.0"
+[project.scripts]
+driver-state-detection = "driver_state_detection.main:main"
+driver-state-detection-download-model = "driver_state_detection.download_model:main"
 
+[dependency-groups]
+dev = [
+    "black>=26.0,<27",
+    "isort>=8.0,<9",
+    "pytest>=9.0,<10",
+]
 
-[tool.poetry.group.dev.dependencies]
-black = "^24.4.2"
-isort = "^5.13.2"
+[tool.isort]
+profile = "black"
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"

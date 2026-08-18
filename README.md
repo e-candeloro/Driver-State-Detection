@@ -1,32 +1,26 @@
 # Real Time Driver State Detection
 ![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)  ![OpenCV](https://img.shields.io/badge/opencv-%23white.svg?style=for-the-badge&logo=opencv&logoColor=white) 
 
-Real time, webcam based, driver attention state detection and monitoring using Python with the OpenCV and Mediapipe libraries.
+Real-time, webcam-based driver attention monitoring using Python, OpenCV, and MediaPipe.
 
-![driver state detection demo](./demo/new_mediapipe_dsd_demo.gif)
+![Driver state detection dashboard demo](./demo/demo_new.gif)
 
 **Note**:
 This work is partially based on [this paper](https://www.researchgate.net/publication/327942674_Vision-Based_Driver%27s_Attention_Monitoring_System_for_Smart_Vehicles) for the scores and methods used.
 
-## Mediapipe Update
+## What's New
 
-Thanks to the awesome contribution of [MustafaLotfi](https://github.com/MustafaLotfi), now the script uses the better performing and accurate face keypoints detection model from the [Google Mediapipe library](https://github.com/google/mediapipe).
+- Updated to the MediaPipe Face Landmarker Tasks API with 478 face and iris landmarks.
+- Fixed gaze, EAR, head-pose, missing-face, timing, and PERCLOS calculations.
+- Added a responsive dashboard with signed roll, pitch, and yaw bars.
+- Migrated dependency management to uv and added a verified local model download.
+- Improved camera calibration, command-line validation, cleanup, and automated tests.
 
-## Last Features added:
-
-- Fast 478 face keypoints detection with Mediapipe
-- Direct iris keypoint detection with Mediapipe for gaze score estimation
-- Improved head pose estimation using the dynamical canonical face model
-- Fixed euler angles function and wrong returned values
-- Using time variables to make the code more modular and machine agnostic
-- Added rolling PERCLOS estimation and smoother driver state detection with decay factor
-- Added new demo video
-
-**NOTE**: the old mediapipe version can still be found in the "dlib-based" repository branch.
+MediaPipe integration was originally added with help from [MustafaLotfi](https://github.com/MustafaLotfi). The older dlib implementation remains available in the `dlib-based` branch.
 
 ## How Does It Work?
 
-This script searches for the driver face, then use the mediapipe library to predict 478 face and iris keypoints.
+The application detects the driver's face and uses MediaPipe to predict 478 face and iris landmarks.
 The enumeration and location of all the face keypoints/landmarks can be seen [here](./demo/face_keypoints.jpg).
 
 With those keypoints, the following scores are computed:
@@ -39,16 +33,18 @@ With those keypoints, the following scores are computed:
 The driver states can be classified as:
 
 - **Normal**: no messages are printed
-- **Tired**: when the PERCLOS score is > 0.2, a warning message is printed on screen
-- **Asleep**: when the eyes are closed (EAR < closure_threshold) for a certain amount of time, a warning message is printed on screen
+- **Tired**: when the PERCLOS score is >= 0.2, a warning message is printed on screen
+- **Asleep**: when the eyes are closed (EAR <= closure_threshold) for a certain amount of time, a warning message is printed on screen
 - **Looking Away**: when the gaze score is higher than a certain threshold for a certain amount of time, a warning message is printed on screen
 - **Distracted**: when the head pose score is higher than a certain threshold for a certain amount of time, a warning message is printed on screen
 
 ## Demo
 
-<video src="https://github.com/user-attachments/assets/94fd76f3-d298-4226-a684-52076f40fe7d" controls="controls" style="max-width: 100%; height: auto;">
+<video src="./demo/demo_new.mp4" controls="controls" muted loop style="max-width: 100%; height: auto;">
     Your browser does not support the video tag.
 </video>
+
+[Open or download the MP4 demo](./demo/demo_new.mp4)
 
 ## The Scores Explained
 
@@ -80,54 +76,72 @@ The partial snippets of code used for this task can be found in [this article](h
 
 ## Installation
 
-This projects runs on Python with the following libraries:
+The project uses [uv](https://docs.astral.sh/uv/) and a managed Python 3.12 environment. From the repository root, install the locked dependencies and download the checksum-verified Face Landmarker model:
 
-- numpy
-- OpenCV (opencv-python)
-- mediapipe
-
-Or you can use poetry to automatically create a virtualenv with all the required packages:
-
-```
-pip install poetry #a global install of poetry is required
+```bash
+uv sync --locked
+uv run driver-state-detection-download-model
 ```
 
-Then inside the repo directory:
-
-```
-poetry install
-```
-
-To activate the env to execute command lines:
-
-```
-poetry shell
-```
-
-Alternatively (not recommended), you can use the requirements.txt file provided in the repository using:
-    
-    pip install -r requirements.txt
-    
+The model is saved as `models/face_landmarker.task`. Runtime detection is offline and reports a setup error if this file is missing. Use `--output` with the download command and `--model-path` with the application to choose another location.
 
 ## Usage
 
-First navigate inside the driver state detection folder:
-    
-    cd driver_state_detection
+Run the application from the repository root:
 
-The scripts can be used with all default options and parameters by calling it via command line:
+```bash
+uv run driver-state-detection
+```
 
-    python main.py
+List the available options:
 
-For the list of possible arguments, write:
+```bash
+uv run driver-state-detection --help
+```
 
-    python main.py --help
+For example, wait five seconds before reporting continuous eye closure and hide the pose axes:
 
-Example of a possible use with parameters:
+```bash
+uv run driver-state-detection --ear_time_thresh 5 --no-show-axis
+```
 
-    python main.py --ear_time_tresh 5
+Boolean display options support both positive and negative forms, such as `--show-fps` and `--no-show-fps`.
 
-This will sets to 5 seconds the eye closure time before a warning  message is shown on screen
+### Dashboard
+
+The attention panel shows EAR and gaze with two decimal places and PERCLOS as a percentage. PERCLOS is marked as warming up until the rolling window has enough valid observations.
+
+The head-pose panel uses signed bars centered on zero. Negative roll, pitch, and yaw fill left; positive values fill right. The fill is green within the configured threshold, amber near it, and red beyond it. Threshold markers remain visible on both sides of zero.
+
+Useful display and scoring options include:
+
+```bash
+uv run driver-state-detection \
+  --no-show-eye-keypoints \
+  --perclos-thresh 0.20 \
+  --perclos-window 60 \
+  --roll-thresh 20 \
+  --pitch-thresh 20 \
+  --yaw-thresh 20
+```
+
+Detector confidence, timer decay, minimum valid PERCLOS coverage, and pose-bar ranges are also configurable. Run `uv run driver-state-detection --help` for the complete list and current defaults.
+
+### Linux GUI Notes
+
+The application configures OpenCV's bundled Qt 5 backend to use XCB through XWayland when running under Wayland. On KDE 6 it also isolates the older bundled Qt runtime from incompatible KDE font settings and uses installed system fonts when the OpenCV wheel does not include its expected font directory.
+
+MediaPipe may still print XNNPACK and feedback-tensor messages when the Face Landmarker starts. These come from MediaPipe's native runtime and describe delegate/model capabilities; they are not detection failures. They are intentionally not hidden because redirecting native stderr would also hide actionable model errors.
+
+## Development
+
+Run the regression tests and formatting checks with:
+
+```bash
+uv run pytest
+uv run black --check driver_state_detection camera_calibration tests
+uv run isort --check-only driver_state_detection camera_calibration tests
+```
 
 ## Why this project
 
@@ -149,4 +163,4 @@ For any question or if you want to contribute to this project, feel free to cont
 - [x] Add argparser option for importing and using the camera matrix and dist. coefficients
 - [x] Reformat classes to follow design patterns and Python conventions
 - [ ] Debug new mediapipe methods and classes and adjust thresholds
-- [ ] Improve perfomances of the script by minimizing image processing steps
+- [x] Improve perfomances of the script by minimizing image processing steps

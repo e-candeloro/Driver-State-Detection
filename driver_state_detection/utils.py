@@ -5,19 +5,27 @@ import numpy as np
 
 
 def load_camera_parameters(file_path):
-    try:
-        with open(file_path, "r") as file:
-            if file_path.endswith(".json"):
-                data = json.load(file)
-            else:
-                raise ValueError("Unsupported file format. Use JSON or YAML.")
-            return (
-                np.array(data["camera_matrix"], dtype="double"),
-                np.array(data["dist_coeffs"], dtype="double"),
-            )
-    except Exception as e:
-        print(f"Failed to load camera parameters: {e}")
-        return None, None
+    """Load and validate OpenCV intrinsics plus optional calibration image size."""
+    if not str(file_path).lower().endswith(".json"):
+        raise ValueError("Unsupported camera parameter format; use JSON")
+
+    with open(file_path, "r", encoding="utf-8") as file:
+        data = json.load(file)
+
+    camera_matrix = np.asarray(data["camera_matrix"], dtype=np.float64)
+    dist_coeffs = np.asarray(data["dist_coeffs"], dtype=np.float64)
+    if camera_matrix.shape != (3, 3):
+        raise ValueError("camera_matrix must have shape (3, 3)")
+    if dist_coeffs.size not in {4, 5, 8, 12, 14}:
+        raise ValueError("dist_coeffs must contain 4, 5, 8, 12, or 14 values")
+    if not np.isfinite(camera_matrix).all() or not np.isfinite(dist_coeffs).all():
+        raise ValueError("camera parameters must contain only finite values")
+    image_size = data.get("image_size")
+    if image_size is not None:
+        if len(image_size) != 2 or min(image_size) <= 0:
+            raise ValueError("image_size must contain positive width and height values")
+        image_size = tuple(image_size)
+    return camera_matrix, dist_coeffs.reshape(-1, 1), image_size
 
 
 def resize(frame, scale_percent):
@@ -38,9 +46,11 @@ def resize(frame, scale_percent):
 
 
 def get_landmarks(lms):
+    """Convert MediaPipe landmarks to NumPy and return the largest valid face."""
     surface = 0
     for lms0 in lms:
-        landmarks = [np.array([point.x, point.y, point.z]) for point in lms0.landmark]
+        points = lms0.landmark if hasattr(lms0, "landmark") else lms0
+        landmarks = [np.array([point.x, point.y, point.z]) for point in points]
 
         landmarks = np.array(landmarks)
 
@@ -54,7 +64,10 @@ def get_landmarks(lms):
         new_surface = dx * dy
         if new_surface > surface:
             biggest_face = landmarks
+            surface = new_surface
 
+    if surface == 0:
+        raise ValueError("No valid face landmarks were provided")
     return biggest_face
 
 

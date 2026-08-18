@@ -1,16 +1,11 @@
-import time
-import numpy as np
+from collections import deque
 
 
 class AttentionScorer:
-    """
-    Attention Scorer class that contains methods for estimating EAR, Gaze_Score, PERCLOS and Head Pose over time,
-    with the given thresholds (time thresholds and value thresholds)
+    """Turn eye, gaze, and pose observations into time-based driver states.
 
-    Methods
-    ----------
-    - eval_scores: used to evaluate the driver's state of attention
-    - get_PERCLOS: specifically used to evaluate the driver sleepiness
+    ``None`` observations are unknown: they neither add to nor decay alert timers.
+    Rolling PERCLOS is time-weighted and excludes unknown intervals.
     """
 
     def __init__(
@@ -19,71 +14,25 @@ class AttentionScorer:
         ear_thresh,
         gaze_thresh,
         perclos_thresh=0.2,
-        roll_thresh=60,
+        perclos_time_period=60.0,
+        perclos_min_valid_fraction=0.8,
+        roll_thresh=20,
         pitch_thresh=20,
-        yaw_thresh=30,
-        ear_time_thresh=4.0,
+        yaw_thresh=20,
+        ear_time_thresh=2.0,
         gaze_time_thresh=2.0,
-        pose_time_thresh=4.0,
+        pose_time_thresh=2.5,
         decay_factor=0.9,
         verbose=False,
     ):
-        """
-        Initialize the AttentionScorer object with the given thresholds and parameters.
-
-        Parameters
-        ----------
-        t_now: float or int
-            The current time in seconds.
-
-        ear_thresh: float or int
-            EAR score value threshold (if the EAR score is less than this value, eyes are considered closed!)
-
-        gaze_thresh: float or int
-            Gaze Score value threshold (if the Gaze Score is more than this value, the gaze is considered not centered)
-
-        perclos_thresh: float (ranges from 0 to 1), optional
-            PERCLOS threshold that indicates the maximum time allowed in 60 seconds of eye closure
-            (default is 0.2 -> 20% of 1 minute)
-
-        roll_thresh: int, optional
-            The roll angle increases or decreases when you turn your head clockwise or counter clockwise.
-            Threshold of the roll angle for considering the person distracted/unconscious (not straight neck)
-            Default threshold is 20 degrees from the center position.
-
-        pitch_thresh: int, optional
-            The pitch angle increases or decreases when you move your head upwards or downwards.
-            Threshold of the pitch angle for considering the person distracted (not looking in front)
-            Default threshold is 20 degrees from the center position.
-
-        yaw_thresh: int, optional
-            The yaw angle increases or decreases when you turn your head to left or right.
-            Threshold of the yaw angle for considering the person distracted/unconscious (not straight neck)
-            It increase or decrease when you turn your head to left or right. default is 20 degrees from the center position.
-
-        ear_time_thresh: float or int, optional
-            Maximum time allowable for consecutive eye closure (given the EAR threshold considered)
-            (default is 4.0 seconds)
-
-        gaze_time_thresh: float or int, optional
-            Maximum time allowable for consecutive gaze not centered (given the Gaze Score threshold considered)
-            (default is 2.0 seconds)
-
-        pose_time_thresh: float or int, optional
-            Maximum time allowable for consecutive distracted head pose (given the pitch,yaw and roll thresholds)
-            (default is 4.0 seconds)
-
-        decay_factor: float, optional
-            Decay factor for the attention scores. This value should be between 0 and 1. The decay factor is used to reduce the score over time when a distraction condition is not met, simulating a decay effect. A value of 0 means istant decay to 0, while a value of 1 means the score will not decay at all. (default is 0.9)
-
-        verbose: bool, optional
-            If set to True, print additional information about the scores (default is False)
-        """
+        """Configure value thresholds, time thresholds, decay, and PERCLOS coverage."""
 
         # Thresholds and configuration
         self.ear_thresh = ear_thresh
         self.gaze_thresh = gaze_thresh
         self.perclos_thresh = perclos_thresh
+        self.perclos_time_period = perclos_time_period
+        self.perclos_min_valid_fraction = perclos_min_valid_fraction
         self.roll_thresh = roll_thresh
         self.pitch_thresh = pitch_thresh
         self.yaw_thresh = yaw_thresh
@@ -99,10 +48,8 @@ class AttentionScorer:
         self.not_look_ahead_time = 0.0
         self.distracted_time = 0.0
 
-        # PERCLOS parameters
-        self.PERCLOS_TIME_PERIOD = 60
-        self.timestamps = np.empty((0,), dtype=np.float64)
-        self.closed_flags = np.empty((0,), dtype=bool)
+        self.perclos_samples = deque()
+        self.perclos_ready = False
         self.eye_closure_counter = 0
         self.prev_time = t_now
 
@@ -117,8 +64,8 @@ class AttentionScorer:
         ----------
         metric_value : float
             The current accumulated value of the metric.
-        condition : bool
-            True if the current measurement should accumulate more time.
+        condition : bool or None
+            True accumulates, False decays, and None preserves the timer.
         elapsed : float
             Time elapsed since the last update.
 
@@ -127,10 +74,19 @@ class AttentionScorer:
         float
             The updated metric value.
         """
+        if condition is None:
+            return metric_value
         if condition:
             return metric_value + elapsed
         else:
-            return metric_value * self.decay_factor
+            return metric_value * self.decay_factor**elapsed
+
+    def mark_face_missing(self, t_now):
+        """Advance timers without treating missing observations as driver state."""
+        self.last_eval_time = t_now
+        self.perclos_samples.append((t_now, None))
+        self._trim_perclos_samples(t_now)
+        self._calculate_rolling_perclos(t_now)
 
     def eval_scores(
         self, t_now, ear_score, gaze_score, head_roll, head_pitch, head_yaw
@@ -159,41 +115,37 @@ class AttentionScorer:
         Returns
         -------
         asleep : bool
-            True if the accumulated closure time exceeds the EAR threshold.
+            True if closure time reaches the configured closure-time threshold.
         looking_away : bool
-            True if the accumulated gaze timer exceeds its threshold.
+            True if the gaze timer reaches its configured time threshold.
         distracted : bool
-            True if the accumulated head pose timer exceeds its threshold.
+            True if the pose timer reaches its configured time threshold.
         """
-        # Calculate the time elapsed since the last evaluation
-        elapsed = t_now - self.last_eval_time
+        elapsed = max(0.0, t_now - self.last_eval_time)
         self.last_eval_time = t_now
 
-        # Update the eye closure metric
+        ear_condition = None if ear_score is None else ear_score <= self.ear_thresh
         self.closure_time = self._update_metric(
-            self.closure_time,
-            (ear_score is not None and ear_score <= self.ear_thresh),
-            elapsed,
+            self.closure_time, ear_condition, elapsed
         )
 
-        # Update the gaze metric
+        gaze_condition = None if gaze_score is None else gaze_score > self.gaze_thresh
         self.not_look_ahead_time = self._update_metric(
-            self.not_look_ahead_time,
-            (gaze_score is not None and gaze_score > self.gaze_thresh),
-            elapsed,
+            self.not_look_ahead_time, gaze_condition, elapsed
         )
 
-        # Update the head pose metric: check if any head angle exceeds its threshold
-        head_condition = (
-            (head_roll is not None and abs(head_roll) > self.roll_thresh)
-            or (head_pitch is not None and abs(head_pitch) > self.pitch_thresh)
-            or (head_yaw is not None and abs(head_yaw) > self.yaw_thresh)
-        )
+        if head_roll is None and head_pitch is None and head_yaw is None:
+            head_condition = None
+        else:
+            head_condition = (
+                (head_roll is not None and abs(head_roll) > self.roll_thresh)
+                or (head_pitch is not None and abs(head_pitch) > self.pitch_thresh)
+                or (head_yaw is not None and abs(head_yaw) > self.yaw_thresh)
+            )
         self.distracted_time = self._update_metric(
             self.distracted_time, head_condition, elapsed
         )
 
-        # Determine driver state based on thresholds
         asleep = self.closure_time >= self.ear_time_thresh
         looking_away = self.not_look_ahead_time >= self.gaze_time_thresh
         distracted = self.distracted_time >= self.pose_time_thresh
@@ -207,10 +159,8 @@ class AttentionScorer:
 
         return asleep, looking_away, distracted
 
-    # NOTE: This method uses a fixed window for the PERCLOS score - that is it resets every X seconds and don't consider the last X seconds as a rolling window!
     def get_PERCLOS(self, t_now, fps, ear_score):
-        """
-        Compute the PERCLOS (Percentage of Eye Closure) score over a given time period.
+        """Compute legacy frame-count PERCLOS over a resetting fixed window.
 
         Parameters
         ----------
@@ -232,28 +182,24 @@ class AttentionScorer:
             The PERCLOS score over a minute.
         """
 
-        delta = t_now - self.prev_time  # set delta timer
-        tired = False  # set default value for the tired state of the driver
+        delta = t_now - self.prev_time
+        tired = False
 
-        all_frames_numbers_in_perclos_duration = int(self.PERCLOS_TIME_PERIOD * fps)
+        all_frames_numbers_in_perclos_duration = int(self.perclos_time_period * fps)
+        if all_frames_numbers_in_perclos_duration <= 0:
+            return False, 0.0
 
-        # if the ear_score is lower or equal than the threshold, increase the eye_closure_counter
         if (ear_score is not None) and (ear_score <= self.ear_thresh):
             self.eye_closure_counter += 1
 
-        # compute the PERCLOS over a given time period
         perclos_score = (
             self.eye_closure_counter
         ) / all_frames_numbers_in_perclos_duration
 
-        if (
-            perclos_score >= self.perclos_thresh
-        ):  # if the PERCLOS score is higher than a threshold, tired = True
+        if perclos_score >= self.perclos_thresh:
             tired = True
 
-        if (
-            delta >= self.PERCLOS_TIME_PERIOD
-        ):  # at every end of the given time period, reset the counter and the timer
+        if delta >= self.perclos_time_period:
             self.eye_closure_counter = 0
             self.prev_time = t_now
 
@@ -261,7 +207,7 @@ class AttentionScorer:
 
     def get_rolling_PERCLOS(self, t_now, ear_score):
         """
-        Compute the rolling PERCLOS score using NumPy vectorized operations.
+        Compute time-weighted eye closure over a rolling window.
 
         Parameters
         ----------
@@ -277,23 +223,42 @@ class AttentionScorer:
         perclos_score : float
             The rolling PERCLOS score calculated over the defined time period.
         """
-        # Determine if the current frame indicates closed eyes
-        eye_closed = (ear_score is not None) and (ear_score <= self.ear_thresh)
+        eye_closed = None if ear_score is None else ear_score <= self.ear_thresh
+        self.perclos_samples.append((t_now, eye_closed))
+        self._trim_perclos_samples(t_now)
 
-        # Append new values to the NumPy arrays. (np.concatenate creates new arrays.)
-        self.timestamps = np.concatenate((self.timestamps, [t_now]))
-        self.closed_flags = np.concatenate((self.closed_flags, [eye_closed]))
-
-        # Create a boolean mask of entries within the rolling window.
-        valid_mask = self.timestamps >= (t_now - self.PERCLOS_TIME_PERIOD)
-        self.timestamps = self.timestamps[valid_mask]
-        self.closed_flags = self.closed_flags[valid_mask]
-
-        total_frames = self.timestamps.size
-        if total_frames > 0:
-            perclos_score = np.sum(self.closed_flags) / total_frames
-        else:
-            perclos_score = 0.0
-
-        tired = perclos_score >= self.perclos_thresh
+        perclos_score = self._calculate_rolling_perclos(t_now)
+        tired = self.perclos_ready and perclos_score >= self.perclos_thresh
         return tired, perclos_score
+
+    def _calculate_rolling_perclos(self, t_now):
+        """Integrate known eye states and update rolling-window readiness."""
+
+        closed_duration = 0.0
+        valid_duration = 0.0
+        samples = list(self.perclos_samples)
+        window_start = t_now - self.perclos_time_period
+        # Each state applies until the next sample, so integrate sample intervals.
+        for (start, closed), (end, _) in zip(samples, samples[1:]):
+            interval_start = max(start, window_start)
+            duration = max(0.0, end - interval_start)
+            if closed is not None:
+                valid_duration += duration
+                if closed:
+                    closed_duration += duration
+
+        perclos_score = closed_duration / valid_duration if valid_duration else 0.0
+        window_is_full = bool(samples) and samples[0][0] <= window_start
+        enough_valid_data = (
+            valid_duration >= self.perclos_time_period * self.perclos_min_valid_fraction
+        )
+        self.perclos_ready = window_is_full and enough_valid_data
+        return perclos_score
+
+    def _trim_perclos_samples(self, t_now):
+        """Drop old samples while retaining the state crossing the window boundary."""
+        window_start = t_now - self.perclos_time_period
+        while (
+            len(self.perclos_samples) > 1 and self.perclos_samples[1][0] <= window_start
+        ):
+            self.perclos_samples.popleft()
